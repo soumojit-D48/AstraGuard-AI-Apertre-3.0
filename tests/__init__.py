@@ -1,2 +1,7 @@
-# AstraGuard AI Tests
-__version__ = "1.0.0"
+"""
+AstraGuard Test Suite
+
+Run all tests with: pytest tests/ -v
+"""
+
+__version__ = "2.0.0"
