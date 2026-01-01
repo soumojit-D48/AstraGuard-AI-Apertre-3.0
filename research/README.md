@@ -18,4 +18,4 @@ Lab reports and findings from:
 - **Memory Dynamics**: Analysis of how the adaptive memory evolves over time.
 
 ## 🎓 For Students & Contributors
-If you want to contribute to the **Security Engine**, start by reading the [Technical Report](docs/FINAL_REPORT.md). It explains the math behind the temporal weighting and resonance scores.
+If you want to contribute to the **Security Engine**, start by reading the [Technical Report](../docs/TECHNICAL_REPORT.md). It explains the math behind the temporal weighting and resonance scores.
