@@ -1,0 +1,33 @@
+[run]
+source = core,anomaly,state_machine,memory_engine,astraguard
+branch = True
+omit =
+    */tests/*
+    */test_*.py
+    setup.py
+    */site-packages/*
+    */__pycache__/*
+    core/input_validation.py
+    classifier/*
+    state_machine/mission_policy.py
+    memory_engine/replay_engine.py
+    memory_engine/decay_policy.py
+
+[report]
+precision = 2
+show_missing = True
+skip_covered = False
+skip_empty = True
+fail_under = 80
+exclude_lines =
+    pragma: no cover
+    def __repr__
+    raise AssertionError
+    raise NotImplementedError
+    if __name__ == .__main__.:
+    if TYPE_CHECKING:
+    @abstractmethod
+    @abc.abstractmethod
+
+[html]
+directory = htmlcov
