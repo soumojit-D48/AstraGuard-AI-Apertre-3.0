@@ -5,13 +5,8 @@ import asyncio
 from pathlib import Path
 from datetime import datetime
 
-# Try to register pytest-asyncio plugin if available
-try:
-    import pytest_asyncio
-    pytest_plugins = ('pytest_asyncio',)
-except ImportError:
-    # pytest_asyncio not available, use manual async fixtures instead
-    pass
+# Register pytest-asyncio plugin (required for @pytest.mark.asyncio tests)
+pytest_plugins = ('pytest_asyncio',)
 
 # Ensure project modules are importable
 sys.path.insert(0, str(Path(__file__).parent.parent))
