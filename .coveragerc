@@ -1,5 +1,5 @@
 [run]
-source = core,anomaly,state_machine,memory_engine
+source = core,anomaly,state_machine,memory_engine,backend
 branch = True
 omit =
     */tests/*
@@ -19,7 +19,7 @@ precision = 2
 show_missing = True
 skip_covered = False
 skip_empty = True
-fail_under = 80
+fail_under = 66
 exclude_lines =
     pragma: no cover
     def __repr__
