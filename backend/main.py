@@ -34,6 +34,11 @@ from backend.recovery_orchestrator import RecoveryOrchestrator
 from backend.redis_client import RedisClient
 from backend.distributed_coordinator import DistributedResilienceCoordinator
 from core.component_health import SystemHealthMonitor
+from core.circuit_breaker import get_all_circuit_breakers
+
+# Import anomaly detector to register its circuit breaker
+# (Must happen before health_monitor initialization)
+import anomaly.anomaly_detector  # noqa: F401
 
 # Configure logging
 logging.basicConfig(
@@ -79,16 +84,20 @@ async def lifespan(app: FastAPI):
         # Initialize component health monitor
         component_health = SystemHealthMonitor()
 
+        # Get registered circuit breaker (from anomaly_detector module)
+        circuit_breakers = get_all_circuit_breakers()
+        model_loader_cb = circuit_breakers.get("anomaly_model_loader")
+
         # Initialize health monitor (Issue #16)
         health_monitor = HealthMonitor(
-            circuit_breaker=None,  # Will integrate with CB from Issue #14
+            circuit_breaker=model_loader_cb,  # Use registered CB from Issue #14
             retry_tracker=None,  # Will integrate with Retry from Issue #15
             failure_window_seconds=3600,
         )
 
         # Initialize fallback manager (Issue #16)
         fallback_manager = FallbackManager(
-            circuit_breaker=None,
+            circuit_breaker=model_loader_cb,  # Use registered CB from Issue #14
             anomaly_detector=None,
             heuristic_detector=None,
         )
