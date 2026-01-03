@@ -9,6 +9,14 @@ from datetime import datetime, timedelta
 from typing import List, Dict, Tuple, Optional
 import pickle
 import os
+import logging
+
+
+logger = logging.getLogger(__name__)
+
+# Security: Base directory for memory store persistence
+# All storage paths must be contained within this directory to prevent traversal attacks
+MEMORY_STORE_BASE_DIR = os.path.abspath("memory_engine")
 
 
 class MemoryEvent:
@@ -172,18 +180,51 @@ class AdaptiveMemoryStore:
         return events
 
     def save(self) -> None:
-        """Persist memory to disk."""
-        os.makedirs(os.path.dirname(self.storage_path), exist_ok=True)
-        with open(self.storage_path, "wb") as f:
-            pickle.dump(self.memory, f)
+        """Persist memory to disk with path validation."""
+        try:
+            # Security: Validate storage path is within base directory (prevents path traversal)
+            resolved_path = os.path.abspath(self.storage_path)
+            if not resolved_path.startswith(MEMORY_STORE_BASE_DIR):
+                logger.error(
+                    f"⚠️  Storage path traversal attempt blocked: {self.storage_path}"
+                )
+                raise ValueError(
+                    f"Storage path must be within {MEMORY_STORE_BASE_DIR}"
+                )
+            
+            os.makedirs(os.path.dirname(resolved_path), exist_ok=True)
+            with open(resolved_path, "wb") as f:
+                pickle.dump(self.memory, f)
+            logger.debug(f"Memory store saved to {resolved_path}")
+        except Exception as e:
+            logger.error(f"Failed to save memory store: {e}", exc_info=True)
+            raise
 
     def load(self) -> bool:
-        """Load memory from disk."""
-        if os.path.exists(self.storage_path):
-            with open(self.storage_path, "rb") as f:
-                self.memory = pickle.load(f)
-            return True
-        return False
+        """Load memory from disk with validation and error handling."""
+        try:
+            # Security: Validate storage path is within base directory (prevents path traversal)
+            resolved_path = os.path.abspath(self.storage_path)
+            if not resolved_path.startswith(MEMORY_STORE_BASE_DIR):
+                logger.error(
+                    f"⚠️  Storage path traversal attempt blocked: {self.storage_path}"
+                )
+                raise ValueError(
+                    f"Storage path must be within {MEMORY_STORE_BASE_DIR}"
+                )
+            
+            if os.path.exists(resolved_path):
+                with open(resolved_path, "rb") as f:
+                    self.memory = pickle.load(f)  # nosec B301 - trusted internal persistence format
+                logger.debug(f"Memory store loaded from {resolved_path}")
+                return True
+            return False
+        except (pickle.UnpicklingError, EOFError, ValueError) as e:
+            logger.error(f"Failed to load memory store: {e}", exc_info=True)
+            return False
+        except Exception as e:
+            logger.error(f"Unexpected error loading memory store: {e}", exc_info=True)
+            return False
 
     def get_stats(self) -> Dict:
         """Get memory statistics."""
