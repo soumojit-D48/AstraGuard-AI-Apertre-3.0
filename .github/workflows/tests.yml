@@ -15,6 +15,15 @@ jobs:
     name: Lint & Code Quality
     runs-on: ubuntu-latest
     steps:
+    - name: Free up disk space
+      run: |
+        echo "Freeing up disk space before checkout..."
+        sudo rm -rf /usr/local/lib/android || true
+        sudo rm -rf /usr/share/dotnet || true
+        sudo rm -rf /opt/ghc || true
+        sudo rm -rf /opt/hostedtoolcache/Python* || true
+        df -h
+    
     - uses: actions/checkout@v4
     
     - name: Set up Python
@@ -49,6 +58,15 @@ jobs:
     name: Security Scan
     runs-on: ubuntu-latest
     steps:
+    - name: Free up disk space
+      run: |
+        echo "Freeing up disk space before checkout..."
+        sudo rm -rf /usr/local/lib/android || true
+        sudo rm -rf /usr/share/dotnet || true
+        sudo rm -rf /opt/ghc || true
+        sudo rm -rf /opt/hostedtoolcache/Python* || true
+        df -h
+    
     - uses: actions/checkout@v4
     
     - name: Set up Python
@@ -96,6 +114,15 @@ jobs:
           - 6379:6379
     
     steps:
+    - name: Free up disk space
+      run: |
+        echo "Freeing up disk space before checkout..."
+        sudo rm -rf /usr/local/lib/android || true
+        sudo rm -rf /usr/share/dotnet || true
+        sudo rm -rf /opt/ghc || true
+        sudo rm -rf /opt/hostedtoolcache/Python* || true
+        df -h
+    
     - uses: actions/checkout@v4
     
     - name: Set up Python ${{ matrix.python-version }}
@@ -190,6 +217,15 @@ jobs:
           - 6379:6379
     
     steps:
+    - name: Free up disk space
+      run: |
+        echo "Freeing up disk space before checkout..."
+        sudo rm -rf /usr/local/lib/android || true
+        sudo rm -rf /usr/share/dotnet || true
+        sudo rm -rf /opt/ghc || true
+        sudo rm -rf /opt/hostedtoolcache/Python* || true
+        df -h
+    
     - uses: actions/checkout@v4
     
     - name: Set up Python ${{ matrix.python-version }}

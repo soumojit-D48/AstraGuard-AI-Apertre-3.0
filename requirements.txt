@@ -12,9 +12,9 @@ aiohttp>=3.11.0,<4.0
 pydantic==2.7.0
 httpx==0.25.0
 
-# ML/AI (torch, sentence-transformers for anomaly detection)
-# WARNING: These are large dependencies (torch ~500MB)
-torch>=2.6.0,<3.0
+# ML/AI (CPU-only torch, no CUDA packages - for CI/GitHub Actions compatibility)
+# For GPU training locally: pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118
+torch>=2.6.0,<3.0 --no-binary torch
 sentence-transformers==5.1.2
 
 # Observability & monitoring
