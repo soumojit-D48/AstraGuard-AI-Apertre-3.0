@@ -99,24 +99,31 @@ jobs:
         ENVIRONMENT=production
         DEBUG=false
         
-        # Redis Configuration
-        REDIS_HOST=localhost
+        # Redis Configuration (using localhost since Redis runs in same docker-compose)
+        REDIS_HOST=redis
         REDIS_PORT=6379
-        REDIS_URL=redis://localhost:6379
+        REDIS_URL=redis://redis:6379
         
         # API Configuration
         API_HOST=0.0.0.0
         API_PORT=8000
-        
-        # Monitoring
-        GRAFANA_PASSWORD=astraguard-admin
-        LOG_LEVEL=INFO
-        
-        # Python Configuration
         PYTHONUNBUFFERED=1
         PYTHONDONTWRITEBYTECODE=1
+        
+        # Monitoring & Observability
+        LOG_LEVEL=INFO
+        GRAFANA_PASSWORD=astraguard-canary-deploy
+        
+        # Chaos Engineering Defaults
+        CHAOS_ENABLED=true
+        FAULT_INJECTION_RATE=0.1
+        
+        # Optional: Add CI-specific configurations below
+        # CI_ENVIRONMENT=github-actions
+        # RUN_MIGRATIONS=false
         EOF
-        echo "✅ Environment file created"
+        echo "✅ Environment file created with $(wc -l < .env) lines"
+        cat .env
     
     - name: Build Docker images
       run: |
@@ -124,29 +131,64 @@ jobs:
     
     - name: Deploy canary (10% traffic)
       run: |
+        set -e
+        echo "=== Starting canary deployment ==="
         docker compose -f docker-compose.yml up -d
-        sleep 10
+        echo "=== Docker containers started ==="
+        sleep 5
+        echo "=== docker ps output ==="
+        docker ps -a
+        echo "=== docker compose ps output ==="
+        docker compose -f docker-compose.yml ps
+        echo "=== API service logs (last 50 lines) ==="
+        docker compose -f docker-compose.yml logs --tail=50 api || echo "Logs not available yet"
+        echo "=== Redis service logs ==="
+        docker compose -f docker-compose.yml logs --tail=20 redis || echo "Redis logs not available"
+        echo "=== Waiting for services to be ready ==="
+        sleep 5
     
     - name: Health check canary
       run: |
         python -c "
         import asyncio
         import aiohttp
+        import time
         
         async def check():
-            async with aiohttp.ClientSession() as session:
-                for i in range(30):
+            url = 'http://localhost:8000/health/live'
+            timeout = aiohttp.ClientTimeout(total=5)
+            max_attempts = 60
+            
+            async with aiohttp.ClientSession(timeout=timeout) as session:
+                for attempt in range(max_attempts):
                     try:
-                        async with session.get('http://localhost:8000/health/live', timeout=aiohttp.ClientTimeout(total=5)) as resp:
-                            if resp.status == 200:
-                                print('✅ Canary healthy')
+                        async with session.get(url) as resp:
+                            status = resp.status
+                            print(f'✓ Attempt {attempt+1}/{max_attempts}: Status {status}')
+                            if status == 200:
+                                print('✅ Canary healthy - ready for traffic')
                                 return
                     except Exception as e:
-                        await asyncio.sleep(1)
-                raise Exception('Canary failed health check')
+                        print(f'✗ Attempt {attempt+1}/{max_attempts}: {type(e).__name__}: {e}')
+                    
+                    if attempt < max_attempts - 1:
+                        await asyncio.sleep(2)
+            
+            raise SystemExit('❌ Canary failed health check after 60 attempts')
         
         asyncio.run(check())
         "
+    
+    - name: Debug canary connectivity
+      if: always()
+      run: |
+        echo "=== Network diagnostics ==="
+        docker compose -f docker-compose.yml ps
+        echo "=== API logs (latest 100 lines) ==="
+        docker compose -f docker-compose.yml logs --tail=100 api || true
+        echo "=== Attempting direct curl to health endpoint ==="
+        curl -v http://localhost:8000/health/live || echo "curl failed (expected if not ready)"
+        echo "=== Done ==="
     
     - name: Run chaos test suite (3min)
       run: |
