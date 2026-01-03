@@ -1,0 +1,334 @@
+# AstraGuard AI - Enhanced Recovery Policies Configuration
+# CubeSat-specific recovery actions with severity thresholds
+# Feature Request #2: Automated Recovery Orchestrator Enhancement
+
+# Global settings
+enabled: true
+poll_interval: 30  # seconds
+dry_run_mode: false  # Set to true to test without executing actions
+
+# Legacy thresholds (kept for backward compatibility)
+thresholds:
+  circuit_open_duration: 300  # 5 minutes
+  retry_failures_1h: 50
+  min_anomaly_accuracy: 0.80
+  failed_components: 2
+
+# Cooldown periods (seconds) - prevents action thrashing
+cooldowns:
+  circuit_restart: 300  # 5 minutes
+  cache_purge: 600  # 10 minutes
+  safe_mode: 300  # 5 minutes
+  # CubeSat-specific cooldowns
+  reduce_power_load: 180  # 3 minutes
+  activate_cooling: 240  # 4 minutes
+  stabilize_attitude: 300  # 5 minutes
+  reduce_processor_load: 180  # 3 minutes
+  enter_safe_mode: 600  # 10 minutes
+  alert_ground: 60  # 1 minute
+
+# ============================================================================
+# CUBESAT-SPECIFIC RECOVERY POLICIES
+# ============================================================================
+
+recovery_policies:
+  # Power fault recovery chain
+  power_fault:
+    severity_threshold: 0.7
+    description: "Battery voltage critical or power system anomaly"
+    escalation_chain:
+      - action: reduce_power_load
+        condition: "severity >= 0.7"
+        params:
+          target_subsystems: ["PAYLOAD", "HEATER", "RADIO_TX"]
+          power_reduction_percent: 30
+        timeout: 30
+
+      - action: alert_ground
+        condition: "severity >= 0.8 or recurrence_count >= 2"
+        params:
+          channel: "emergency"
+          priority: "high"
+          message: "Power fault detected - reduced load activated"
+        timeout: 10
+
+      - action: enter_safe_mode
+        condition: "severity >= 0.9 or recurrence_count >= 3"
+        params:
+          reason: "critical_power_fault"
+          preserve_state: true
+        timeout: 15
+
+  # Thermal fault recovery chain
+  thermal_fault:
+    severity_threshold: 0.6
+    description: "Temperature outside nominal range"
+    escalation_chain:
+      - action: activate_cooling
+        condition: "severity >= 0.6"
+        params:
+          duty_cycle: 80
+          target_temperature: 35
+          max_duration: 300
+        timeout: 20
+
+      - action: reduce_processor_load
+        condition: "severity >= 0.7 or duration > 180"
+        params:
+          cpu_throttle_percent: 20
+          disable_non_critical_tasks: true
+        timeout: 15
+
+      - action: reduce_power_load
+        condition: "severity >= 0.8"
+        params:
+          target_subsystems: ["PAYLOAD", "HEATER"]
+          power_reduction_percent: 40
+        timeout: 30
+
+      - action: alert_ground
+        condition: "severity >= 0.85 or recurrence_count >= 2"
+        params:
+          channel: "emergency"
+          priority: "high"
+          message: "Thermal fault - cooling and load reduction active"
+        timeout: 10
+
+  # Attitude control fault recovery
+  attitude_fault:
+    severity_threshold: 0.8
+    description: "Satellite orientation/stabilization issue"
+    escalation_chain:
+      - action: stabilize_attitude
+        condition: "severity >= 0.8"
+        params:
+          use_thrusters: false
+          use_wheels: true
+          target_mode: "nadir_pointing"
+          max_correction_time: 120
+        timeout: 60
+
+      - action: enter_safe_mode
+        condition: "severity >= 0.9 or stabilization_failed"
+        params:
+          reason: "attitude_control_failure"
+          preserve_state: false
+          sun_pointing: true
+        timeout: 15
+
+      - action: alert_ground
+        condition: "always"
+        params:
+          channel: "emergency"
+          priority: "critical"
+          message: "Attitude fault detected - stabilization attempted"
+        timeout: 10
+
+  # Communication system fault
+  comm_fault:
+    severity_threshold: 0.75
+    description: "Radio or communication system anomaly"
+    escalation_chain:
+      - action: restart_radio
+        condition: "severity >= 0.75"
+        params:
+          radio_id: "primary"
+          warm_restart: true
+        timeout: 30
+
+      - action: switch_to_backup_radio
+        condition: "severity >= 0.85 or restart_failed"
+        params:
+          activate_secondary: true
+          deactivate_primary: true
+        timeout: 20
+
+      - action: enter_safe_mode
+        condition: "severity >= 0.95"
+        params:
+          reason: "communication_failure"
+          beacon_mode: true
+        timeout: 15
+
+  # Memory/storage fault
+  memory_fault:
+    severity_threshold: 0.7
+    description: "Memory exhaustion or corruption detected"
+    escalation_chain:
+      - action: cache_purge
+        condition: "severity >= 0.7"
+        params:
+          aggressive: true
+          preserve_critical: true
+        timeout: 60
+
+      - action: reduce_processor_load
+        condition: "severity >= 0.8"
+        params:
+          cpu_throttle_percent: 30
+          disable_non_critical_tasks: true
+        timeout: 15
+
+      - action: alert_ground
+        condition: "severity >= 0.85"
+        params:
+          channel: "operations"
+          priority: "high"
+          message: "Memory fault - cache purged and load reduced"
+        timeout: 10
+
+  # Generic anomaly (fallback)
+  unknown_anomaly:
+    severity_threshold: 0.85
+    description: "Unclassified anomaly with high severity"
+    escalation_chain:
+      - action: log_detailed_state
+        condition: "always"
+        params:
+          include_telemetry: true
+          include_component_health: true
+          duration_seconds: 60
+        timeout: 30
+
+      - action: alert_ground
+        condition: "severity >= 0.85"
+        params:
+          channel: "operations"
+          priority: "medium"
+          message: "Unknown anomaly detected - monitoring"
+        timeout: 10
+
+      - action: enter_safe_mode
+        condition: "severity >= 0.95"
+        params:
+          reason: "unknown_critical_anomaly"
+          preserve_state: true
+        timeout: 15
+
+# ============================================================================
+# RECOVERY ACTION DEFINITIONS
+# ============================================================================
+
+recovery_actions:
+  # Legacy actions
+  circuit_restart:
+    enabled: true
+    timeout: 30
+    max_retries: 3
+
+  cache_purge:
+    enabled: true
+    timeout: 60
+
+  safe_mode:
+    enabled: true
+    timeout: 10
+
+  # New CubeSat-specific actions
+  reduce_power_load:
+    enabled: true
+    timeout: 30
+    description: "Reduce power consumption by disabling non-critical subsystems"
+    phase_restrictions:
+      LAUNCH: false  # Don't modify power during launch
+      DEPLOYMENT: false  # Critical deployment phase
+      NOMINAL_OPS: true
+      PAYLOAD_OPS: true
+      SAFE_MODE: false  # Already in safe mode
+
+  activate_cooling:
+    enabled: true
+    timeout: 20
+    description: "Activate thermal management systems"
+
+  stabilize_attitude:
+    enabled: true
+    timeout: 60
+    description: "Execute attitude stabilization maneuver"
+    phase_restrictions:
+      LAUNCH: false
+      DEPLOYMENT: false
+      NOMINAL_OPS: true
+      PAYLOAD_OPS: true
+      SAFE_MODE: true
+
+  reduce_processor_load:
+    enabled: true
+    timeout: 15
+    description: "Throttle CPU and disable non-critical processes"
+
+  enter_safe_mode:
+    enabled: true
+    timeout: 15
+    description: "Force transition to SAFE_MODE"
+
+  alert_ground:
+    enabled: true
+    timeout: 10
+    description: "Send alert to ground control"
+
+  restart_radio:
+    enabled: true
+    timeout: 30
+    description: "Restart communication radio"
+
+  switch_to_backup_radio:
+    enabled: true
+    timeout: 20
+    description: "Switch from primary to backup radio"
+
+  log_detailed_state:
+    enabled: true
+    timeout: 30
+    description: "Capture comprehensive system state for diagnostics"
+
+# ============================================================================
+# ADVANCED SETTINGS
+# ============================================================================
+
+advanced:
+  # Maximum concurrent recovery actions
+  max_concurrent_actions: 1
+
+  # Action timeout multiplier (adds buffer to configured timeouts)
+  action_timeout_multiplier: 1.5
+
+  # History retention
+  history_retention_days: 30
+  max_history_entries: 1000
+
+  # Verification settings
+  verify_recovery_success: true
+  verification_delay_seconds: 30
+  max_verification_attempts: 3
+
+  # Escalation settings
+  auto_escalate_on_failure: true
+  escalation_failure_threshold: 2  # Failures before escalating
+
+  # Safety limits
+  max_actions_per_hour: 10
+  max_safe_mode_entries_per_day: 5
+
+# ============================================================================
+# LOGGING & ALERTING
+# ============================================================================
+
+logging:
+  level: INFO
+
+  # Slack webhook for critical alerts
+  slack_webhook: ""  # Set to enable
+
+  # Events to alert on (if Slack enabled)
+  slack_events:
+    - recovery_action_executed
+    - recovery_action_failed
+    - multiple_failures_detected
+    - safe_mode_entered
+    - escalation_triggered
+
+  # Log file settings
+  log_file: "logs/recovery_orchestrator.log"
+  log_rotation: "daily"
+  log_retention_days: 90
