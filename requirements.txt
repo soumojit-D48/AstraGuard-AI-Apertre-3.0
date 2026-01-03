@@ -33,6 +33,7 @@ deprecated>=1.2.0
 
 # Infrastructure & coordination
 redis==5.0.1
+sqlalchemy>=2.0.0,<3.0
 
 # Utilities
 python-dateutil==2.8.2
