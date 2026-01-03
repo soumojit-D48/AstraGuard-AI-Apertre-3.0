@@ -2,6 +2,7 @@ import random
 import os
 import pickle
 import logging
+import asyncio
 from typing import Dict, Tuple, Optional
 
 # Import centralized error handling
@@ -11,6 +12,15 @@ from core.error_handling import (
     safe_execute,
 )
 from core.component_health import get_health_monitor, HealthStatus
+from core.circuit_breaker import CircuitBreaker, CircuitOpenError, register_circuit_breaker
+from core.retry import Retry
+from core.metrics import (
+    ANOMALY_DETECTIONS_TOTAL,
+    ANOMALY_MODEL_LOAD_ERRORS_TOTAL,
+    ANOMALY_MODEL_FALLBACK_ACTIVATIONS,
+    ANOMALY_DETECTION_LATENCY,
+)
+import time
 
 logger = logging.getLogger(__name__)
 
@@ -19,13 +29,28 @@ _MODEL: Optional[object] = None
 _MODEL_LOADED = False
 _USING_HEURISTIC_MODE = False
 
+# Initialize circuit breaker for model loading
+_model_loader_cb = register_circuit_breaker(
+    CircuitBreaker(
+        name="anomaly_model_loader",
+        failure_threshold=5,
+        success_threshold=2,
+        recovery_timeout=60,
+        expected_exceptions=(ModelLoadError, OSError, Exception)
+    )
+)
 
-def load_model() -> bool:
+
+async def _load_model_impl() -> bool:
     """
-    Load the anomaly detection model with error handling.
+    Internal implementation of model loading.
+    Wrapped by retry logic first, then circuit breaker.
     
     Returns:
         True if model loaded successfully, False otherwise
+        
+    Raises:
+        ModelLoadError: If model loading fails
     """
     global _MODEL, _MODEL_LOADED, _USING_HEURISTIC_MODE
     
@@ -47,48 +72,89 @@ def load_model() -> bool:
         )
         return False
     
-    try:
-        if os.path.exists(MODEL_PATH):
-            with open(MODEL_PATH, "rb") as f:
-                _MODEL = pickle.load(f)
-            _MODEL_LOADED = True
-            _USING_HEURISTIC_MODE = False
-            health_monitor.mark_healthy("anomaly_detector", {
-                "mode": "model-based",
-                "model_path": MODEL_PATH,
-            })
-            logger.info("Anomaly detection model loaded successfully")
-            return True
-        else:
-            raise ModelLoadError(
-                f"Model file not found at {MODEL_PATH}",
-                component="anomaly_detector",
-                context={"model_path": MODEL_PATH}
-            )
-    except (pickle.PickleError, EOFError, OSError) as e:
-        logger.warning(f"Failed to load anomaly model: {e}. Switching to heuristic mode.")
-        _USING_HEURISTIC_MODE = True
-        _MODEL_LOADED = False
-        health_monitor.mark_degraded(
-            "anomaly_detector",
-            error_msg=f"Model load failed: {str(e)}",
-            fallback_active=True,
-            metadata={
-                "mode": "heuristic",
-                "reason": str(e),
-            }
+    if os.path.exists(MODEL_PATH):
+        with open(MODEL_PATH, "rb") as f:
+            _MODEL = pickle.load(f)
+        _MODEL_LOADED = True
+        _USING_HEURISTIC_MODE = False
+        health_monitor.mark_healthy("anomaly_detector", {
+            "mode": "model-based",
+            "model_path": MODEL_PATH,
+        })
+        logger.info("Anomaly detection model loaded successfully")
+        return True
+    else:
+        raise ModelLoadError(
+            f"Model file not found at {MODEL_PATH}",
+            component="anomaly_detector",
+            context={"model_path": MODEL_PATH}
         )
+
+
+async def _load_model_fallback() -> bool:
+    """Fallback when circuit breaker is open - use heuristic mode"""
+    global _USING_HEURISTIC_MODE
+    logger.warning("Model loader circuit breaker open - switching to heuristic mode")
+    _USING_HEURISTIC_MODE = True
+    ANOMALY_MODEL_FALLBACK_ACTIVATIONS.inc()
+    return False
+
+
+# Apply retry decorator: 3 attempts with 0.5-8s exponential backoff + jitter
+# Retry BEFORE circuit breaker to handle transient failures
+@Retry(
+    max_attempts=3,
+    base_delay=0.5,
+    max_delay=8.0,
+    allowed_exceptions=(TimeoutError, ConnectionError, OSError, asyncio.TimeoutError),
+    jitter_type="full"
+)
+async def _load_model_with_retry() -> bool:
+    """
+    Model loading with retry wrapper.
+    Retries on transient failures before circuit breaker engagement.
+    """
+    return await _load_model_impl()
+def load_model() -> bool:
+    """
+    Load the anomaly detection model with retry + circuit breaker protection.
+    
+    Pattern: Retry (transient failures) → CircuitBreaker (cascading failures)
+    
+    The retry decorator handles transient failures (timeouts, connection resets).
+    The circuit breaker handles persistent failures (protection from cascading).
+    
+    Returns:
+        True if model loaded successfully, False otherwise (heuristic mode)
+    """
+    global _MODEL, _MODEL_LOADED, _USING_HEURISTIC_MODE
+    
+    try:
+        # Use asyncio event loop if available, else create one
+        try:
+            loop = asyncio.get_event_loop()
+        except RuntimeError:
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+        
+        # Call through retry (handles transient) then circuit breaker (handles cascading)
+        result = loop.run_until_complete(
+            _model_loader_cb.call(
+                _load_model_with_retry,  # Retry wrapper
+                fallback=_load_model_fallback
+            )
+        )
+        return result
+        
+    except CircuitOpenError as e:
+        logger.error(f"Circuit breaker open: {e}")
+        _USING_HEURISTIC_MODE = True
+        ANOMALY_MODEL_FALLBACK_ACTIVATIONS.inc()
         return False
     except Exception as e:
-        logger.error(f"Unexpected error loading anomaly model: {e}")
+        logger.error(f"Unexpected error during model load: {e}")
+        ANOMALY_MODEL_LOAD_ERRORS_TOTAL.inc()
         _USING_HEURISTIC_MODE = True
-        _MODEL_LOADED = False
-        health_monitor.mark_degraded(
-            "anomaly_detector",
-            error_msg=f"Unexpected error: {str(e)}",
-            fallback_active=True,
-            metadata={"mode": "heuristic"}
-        )
         return False
 
 
@@ -132,9 +198,10 @@ def _detect_anomaly_heuristic(data: Dict) -> Tuple[bool, float]:
 
 def detect_anomaly(data: Dict) -> Tuple[bool, float]:
     """
-    Detect anomaly in telemetry data with centralized error handling.
+    Detect anomaly in telemetry data with circuit breaker protection.
     
-    Falls back to heuristic detection if model is unavailable.
+    Falls back to heuristic detection if model is unavailable or
+    circuit breaker is open.
     
     Args:
         data: Telemetry data dictionary
@@ -147,14 +214,18 @@ def detect_anomaly(data: Dict) -> Tuple[bool, float]:
     global _USING_HEURISTIC_MODE
     health_monitor = get_health_monitor()
     
-    # Always ensure component is registered (safe: idempotent)
-    health_monitor.register_component("anomaly_detector")
-    
-    # Ensure model is loaded once
-    if not _MODEL_LOADED:
-        load_model()
+    # Track latency
+    start_time = time.time()
+    detector_type = "model"
     
     try:
+        # Always ensure component is registered (safe: idempotent)
+        health_monitor.register_component("anomaly_detector")
+        
+        # Ensure model is loaded once
+        if not _MODEL_LOADED:
+            load_model()
+        
         # Validate input
         if not isinstance(data, dict):
             raise AnomalyEngineError(
@@ -179,6 +250,13 @@ def detect_anomaly(data: Dict) -> Tuple[bool, float]:
                 score = max(0, min(score, 1.0))  # Normalize to 0-1
                 
                 health_monitor.mark_healthy("anomaly_detector")
+                
+                # Record metrics
+                ANOMALY_DETECTIONS_TOTAL.labels(detector_type="model").inc()
+                ANOMALY_DETECTION_LATENCY.labels(detector_type="model").observe(
+                    time.time() - start_time
+                )
+                
                 return bool(is_anomalous), float(score)
             except Exception as e:
                 logger.warning(f"Model prediction failed: {e}. Falling back to heuristic.")
@@ -191,6 +269,7 @@ def detect_anomaly(data: Dict) -> Tuple[bool, float]:
                 # Fall through to heuristic
         
         # Use heuristic fallback
+        detector_type = "heuristic"
         is_anomalous, score = _detect_anomaly_heuristic(data)
         health_monitor.mark_degraded(
             "anomaly_detector",
@@ -198,6 +277,12 @@ def detect_anomaly(data: Dict) -> Tuple[bool, float]:
             fallback_active=True,
             metadata={"mode": "heuristic"}
         ) if _USING_HEURISTIC_MODE else health_monitor.mark_healthy("anomaly_detector")
+        
+        # Record metrics for heuristic
+        ANOMALY_DETECTIONS_TOTAL.labels(detector_type="heuristic").inc()
+        ANOMALY_DETECTION_LATENCY.labels(detector_type="heuristic").observe(
+            time.time() - start_time
+        )
         
         return is_anomalous, score
         
