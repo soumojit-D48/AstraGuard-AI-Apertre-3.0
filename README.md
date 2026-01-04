@@ -120,24 +120,31 @@ AstraGuard AI uses a **dual-engine architecture** that separates execution from 
 
 ```mermaid
 graph TD
-    A["🛰️ Telemetry Stream (Pathway)"] -->|Live Data| B["📊 Embedding Encoder"]
-    B -->|Vectors| C["🧠 Adaptive Memory Store"]
-    C -->|Context| D["🤖 Anomaly Reasoning Agent"]
-    B -->|Current Event| D
-    D -->|Decision| E["⚡ Response Orchestrator"]
-    E -->|Actions| F["🛰️ System Recovery"]
-    F -->|Feedback| C
+    A["🛰️ Telemetry StreamReal-time satellite data via Pathway"] -->|"Live Data Feed"| B["📊 Embedding EncoderVector transformation"]
+    B -->|"Vector Embeddings"| C["🧠 Adaptive Memory StoreContext-aware storage"]
+    C -->|"Historical Context"| D["🤖 Anomaly Reasoning AgentAI-powered analysis"]
+    B -->|"Current Event Data"| D
+    D -->|"Recovery Decision"| E["⚡ Response OrchestratorAction coordinator"]
+    E -->|"Automated Actions"| F["🛰️ System RecoverySelf-healing mechanisms"]
+    F -->|"Performance Feedback"| C
     
-    D -.->|Reasoning Trace| G["📊 Dashboard"]
-    C -.->|Memory State| G
-    E -.->|Action Status| G
+    D -.->|"Reasoning Trace"| G["📊 Monitoring DashboardReal-time visualization"]
+    C -.->|"Memory State"| G
+    E -.->|"Action Status"| G
     
-    style A fill:#e1f5ff
-    style D fill:#fff4e1
-    style E fill:#ffe1e1
-    style G fill:#e1ffe1
+    %% Enhanced styling with professional colors
+    style A fill:#4A90E2,stroke:#2E5C8A,stroke-width:3px,color:#fff
+    style B fill:#7B68EE,stroke:#4B3B9E,stroke-width:2px,color:#fff
+    style C fill:#50C878,stroke:#2E7D4E,stroke-width:2px,color:#fff
+    style D fill:#FFB84D,stroke:#CC8A3D,stroke-width:3px,color:#000
+    style E fill:#FF6B6B,stroke:#CC5555,stroke-width:3px,color:#fff
+    style F fill:#4ECDC4,stroke:#3A9D96,stroke-width:2px,color:#fff
+    style G fill:#95E1D3,stroke:#6BB1A3,stroke-width:2px,color:#000
+    
+    %% Link styling
+    linkStyle 0,1,2,3,4,5 stroke:#333,stroke-width:2px
+    linkStyle 6,7,8 stroke:#999,stroke-width:1.5px,stroke-dasharray:5
 ```
-
 ### Dual-Engine Design
 
 #### 1. 🛡️ Core Security Engine (The Muscle)
