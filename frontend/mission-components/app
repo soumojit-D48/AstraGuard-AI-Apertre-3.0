@@ -1,0 +1,10 @@
+import Dashboard from '@/components/dashboard/Dashboard';
+
+export const metadata = {
+  title: 'Mission Control | AstraGuard AI',
+  description: 'AstraGuard AI Mission Control Dashboard',
+};
+
+export default function DashboardPage() {
+  return <Dashboard />;
+}

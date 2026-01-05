@@ -1,0 +1,15 @@
+{
+  "mission": {
+    "name": "Astra-01",
+    "phase": "Stable Orbit",
+    "status": "Nominal",
+    "updated": "14:32:15",
+    "anomalyCount": 0
+  },
+  "navItems": [
+    { "label": "Dashboard", "icon": "📊" },
+    { "label": "Satellites", "icon": "🛰️" },
+    { "label": "Alerts", "icon": "🚨" },
+    { "label": "Settings", "icon": "⚙️" }
+  ]
+}
