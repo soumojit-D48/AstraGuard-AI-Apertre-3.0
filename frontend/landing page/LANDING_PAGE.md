@@ -61,6 +61,95 @@ A modern, professional marketing landing page template featuring:
 - Fully responsive design (mobile/tablet/desktop)
 - Modern cyberpunk theme with neon cyan accents
 
+### 3. Mission Control Dashboard (`astraguard-ai.site`)
+
+**Live Server**: [localhost:3000/dashboard](http://localhost:3000/dashboard)  
+**Location**: `frontend/astraguard-ai.site/app/dashboard/`  
+**Framework**: Next.js 16.0.10 with TypeScript & Tailwind CSS
+
+#### Dashboard Features
+
+A production-grade satellite operations dashboard with:
+
+**Core Components**:
+- **Fixed Header** (80px): Live IST clock, mission name, phase badge, status indicator, anomaly count
+- **Collapsible Navigation**: Responsive sidebar with 4 navigation items, mobile hamburger drawer (300px)
+- **Tabbed Interface**: 
+  - Mission Control tab (teal theme) - Real-time mission status and KPIs
+  - Systems Health tab (magenta theme) - Component status monitoring
+- **Responsive Design**: Desktop, tablet, and mobile optimized layouts
+
+**Visual Theme**:
+- Cyberpunk aesthetic with starfield background animation
+- Neon color scheme: Teal (#00f5ff) and Magenta (#ff00ff)
+- Glow effects and smooth transitions
+- ARIA-compliant accessibility (keyboard navigation, screen reader support)
+
+**Key Metrics Dashboard**:
+- Mission status (Nominal/Degraded/Critical)
+- Current orbit phase
+- Anomaly detection count
+- Live timestamp updates (IST timezone)
+- System health indicators
+
+#### Technologies
+
+- **Frontend Framework**: Next.js 16.0.10 (React 19)
+- **Language**: TypeScript
+- **Styling**: Tailwind CSS + Custom CSS animations
+- **State Management**: React Hooks (useState, useEffect)
+- **Data**: Mock JSON data (expandable to API integration)
+
+#### File Structure
+
+```
+frontend/astraguard-ai.site/
+├── app/
+│   ├── dashboard/
+│   │   └── page.tsx              # Dashboard route handler
+│   ├── layout.tsx                # Root layout
+│   ├── globals.css               # Cyberpunk theme & animations
+│   └── page.tsx                  # Home page
+├── components/
+│   └── dashboard/
+│       ├── Dashboard.tsx         # Main orchestrator component
+│       ├── DashboardHeader.tsx   # 80px fixed header with live clock
+│       └── VerticalNav.tsx       # Collapsible navigation sidebar
+├── types/
+│   └── dashboard.ts              # TypeScript interfaces
+└── public/
+    └── mocks/
+        └── dashboard.json        # Static mission data
+```
+
+#### Getting Started
+
+```bash
+# Navigate to frontend directory
+cd frontend/astraguard-ai.site
+
+# Install dependencies
+npm install
+
+# Start development server
+npm run dev
+
+# Access dashboard at http://localhost:3000/dashboard
+```
+
+#### Build & Deploy
+
+```bash
+# Build for production
+npm run build
+
+# Start production server
+npm run start
+
+# Deploy to Vercel
+vercel deploy
+```
+
 ---
 
 ### 1. **Hero Section**
@@ -459,6 +548,10 @@ This project is licensed under the MIT License. See [LICENSE](../../LICENSE) for
 - [README.md](../../README.md) - Main project README
 - [TECHNICAL.md](../../docs/TECHNICAL.md) - Technical specifications
 - [VALIDATION_SUMMARY.md](../../VALIDATION_SUMMARY.md) - Validation results
+- **Mission Control Dashboard**: Built with Next.js 16, TypeScript, and Tailwind CSS
+  - Location: `frontend/astraguard-ai.site`
+  - Live: [localhost:3000/dashboard](http://localhost:3000/dashboard)
+  - Features: Real-time mission monitoring, tabbed interface, cyberpunk theme
 
 ---
 
