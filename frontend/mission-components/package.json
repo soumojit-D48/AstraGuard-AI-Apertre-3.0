@@ -54,7 +54,9 @@
     "next": "16.0.10",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
+    "react-globe.gl": "^2.37.0",
     "recharts": "^3.6.0",
+    "three": "^0.182.0",
     "ws": "^8.19.0"
   },
   "devDependencies": {
