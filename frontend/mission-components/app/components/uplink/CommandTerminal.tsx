@@ -8,6 +8,7 @@ interface CommandResponse {
 }
 
 import { useVoiceAssistant } from '../../hooks/useVoiceAssistant';
+import { useSoundEffects } from '../../hooks/useSoundEffects';
 
 export const CommandTerminal: React.FC = () => {
     const { playKeystroke, playSuccess } = useSoundEffects();

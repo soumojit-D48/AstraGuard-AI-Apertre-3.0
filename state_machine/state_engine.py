@@ -8,7 +8,7 @@ from core.error_handling import StateTransitionError
 from core.component_health import get_health_monitor
 from core.metrics import MISSION_PHASE
 # Import input validation
-from core.input_validation import MissionPhaseValidator, ValidationError
+from core.input_validation import MissionPhaseValidator, ValidationError, TelemetryData
 
 logger = logging.getLogger(__name__)
 

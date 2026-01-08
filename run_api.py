@@ -6,7 +6,7 @@ Run the FastAPI server for telemetry ingestion and anomaly detection.
 
 Usage:
     python run_api.py
-    python run_api.py --host 0.0.0.0 --port 8000
+    python run_api.py --host 0.0.0.0 --port 8002
     python run_api.py --reload  # Development mode with auto-reload
 """
 
@@ -27,8 +27,8 @@ def main():
     parser.add_argument(
         "--port",
         type=int,
-        default=8000,
-        help="Port to bind to (default: 8000)"
+        default=8002,
+        help="Port to bind to (default: 8002)"
     )
     parser.add_argument(
         "--reload",

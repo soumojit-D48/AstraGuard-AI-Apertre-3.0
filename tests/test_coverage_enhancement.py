@@ -45,21 +45,21 @@ class TestStateMachineAdvanced:
     def test_process_fault_normal_recovery(self):
         """Test process_fault transitioning from anomaly to normal (lines 155-162)."""
         self.sm.current_state = SystemState.ANOMALY_DETECTED
-        result = self.sm.process_fault("normal", {})
+        result = self.sm.process_fault("normal", {"voltage": 8.0, "temperature": 25.0, "gyro": 0.0, "current": 0.5, "wheel_speed": 100})
         assert result["new_state"] == SystemState.NORMAL.value
     
     def test_process_fault_escalation_sequence(self):
         """Test fault escalation through all states (lines 166-183)."""
         # NORMAL -> ANOMALY_DETECTED
-        result = self.sm.process_fault("thermal", {})
+        result = self.sm.process_fault("thermal", {"voltage": 8.0, "temperature": 25.0, "gyro": 0.0, "current": 0.5, "wheel_speed": 100})
         assert result["new_state"] == SystemState.ANOMALY_DETECTED.value
         
         # ANOMALY_DETECTED -> FAULT_DETECTED
-        result = self.sm.process_fault("thermal", {})
+        result = self.sm.process_fault("thermal", {"voltage": 8.0, "temperature": 25.0, "gyro": 0.0, "current": 0.5, "wheel_speed": 100})
         assert result["new_state"] == SystemState.FAULT_DETECTED.value
         
         # FAULT_DETECTED -> RECOVERY_IN_PROGRESS
-        result = self.sm.process_fault("power", {})
+        result = self.sm.process_fault("power", {"voltage": 8.0, "temperature": 25.0, "gyro": 0.0, "current": 0.5, "wheel_speed": 100})
         assert result["new_state"] == SystemState.RECOVERY_IN_PROGRESS.value
         assert self.sm.recovery_steps == 0
     
@@ -412,7 +412,7 @@ class TestStateEngineComplexScenarios:
     def test_recovery_in_progress_state_tracking(self):
         """Test tracking recovery in progress state."""
         self.sm.current_state = SystemState.FAULT_DETECTED
-        self.sm.process_fault("critical", {})
+        self.sm.process_fault("critical", {"voltage": 8.0, "temperature": 25.0, "gyro": 0.0, "current": 0.5, "wheel_speed": 100})
         assert self.sm.current_state == SystemState.RECOVERY_IN_PROGRESS
         assert self.sm.recovery_steps == 0
     
@@ -421,7 +421,7 @@ class TestStateEngineComplexScenarios:
         # Process through all escalation levels
         faults = ["thermal", "power", "attitude"]
         for fault in faults:
-            self.sm.process_fault(fault, {})
+            self.sm.process_fault(fault, {"voltage": 8.0, "temperature": 25.0, "gyro": 0.0, "current": 0.5, "wheel_speed": 100})
         assert self.sm.current_state == SystemState.RECOVERY_IN_PROGRESS
     
     def test_safe_mode_emergency_from_any_phase(self):
@@ -447,15 +447,15 @@ class TestStateEngineComplexScenarios:
         assert self.sm.current_state == SystemState.NORMAL
         
         # Detect fault
-        self.sm.process_fault("thermal", {})
+        self.sm.process_fault("thermal", {"voltage": 8.0, "temperature": 25.0, "gyro": 0.0, "current": 0.5, "wheel_speed": 100})
         assert self.sm.current_state == SystemState.ANOMALY_DETECTED
         
         # Continue degrading
-        self.sm.process_fault("power", {})
+        self.sm.process_fault("power", {"voltage": 8.0, "temperature": 25.0, "gyro": 0.0, "current": 0.5, "wheel_speed": 100})
         assert self.sm.current_state == SystemState.FAULT_DETECTED
         
         # Enter recovery
-        self.sm.process_fault("critical", {})
+        self.sm.process_fault("critical", {"voltage": 8.0, "temperature": 25.0, "gyro": 0.0, "current": 0.5, "wheel_speed": 100})
         assert self.sm.current_state == SystemState.RECOVERY_IN_PROGRESS
         
         # Complete recovery steps
@@ -775,15 +775,15 @@ class TestStateEngineEdgeCases:
     def test_process_fault_state_progression(self):
         """Test fault processing state progression."""
         # Test NORMAL -> ANOMALY_DETECTED
-        result = self.sm.process_fault("test_fault", {})
+        result = self.sm.process_fault("test_fault", {"voltage": 8.0, "temperature": 25.0, "gyro": 0.0, "current": 0.5, "wheel_speed": 100})
         assert result["new_state"] == SystemState.ANOMALY_DETECTED.value
         
         # Test ANOMALY_DETECTED -> FAULT_DETECTED
-        result = self.sm.process_fault("test_fault", {})
+        result = self.sm.process_fault("test_fault", {"voltage": 8.0, "temperature": 25.0, "gyro": 0.0, "current": 0.5, "wheel_speed": 100})
         assert result["new_state"] == SystemState.FAULT_DETECTED.value
         
         # Test FAULT_DETECTED -> RECOVERY_IN_PROGRESS
-        result = self.sm.process_fault("test_fault", {})
+        result = self.sm.process_fault("test_fault", {"voltage": 8.0, "temperature": 25.0, "gyro": 0.0, "current": 0.5, "wheel_speed": 100})
         assert result["new_state"] == SystemState.RECOVERY_IN_PROGRESS.value
     
     def test_recovery_completion_multiple_steps(self):

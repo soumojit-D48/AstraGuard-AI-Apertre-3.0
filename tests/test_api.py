@@ -300,7 +300,9 @@ class TestIntegrationFlow:
         telemetry = {
             "voltage": 6.0,  # Power fault
             "temperature": 55.0,  # Thermal fault
-            "gyro": 0.3  # Attitude fault
+            "gyro": 0.3,  # Attitude fault
+            "current": 2.0,
+            "wheel_speed": 4000
         }
         telemetry_response = client.post("/api/v1/telemetry", json=telemetry)
         assert telemetry_response.status_code == 200

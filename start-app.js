@@ -95,8 +95,8 @@ async function startBackend() {
     apiProcess.stdout.on('data', (data) => {
       const output = data.toString();
       if (output.includes('Application startup complete')) {
-        log('INFO', 'Backend API Server is running on http://localhost:8000');
-        log('INFO', 'API Docs: http://localhost:8000/docs');
+        log('INFO', 'Backend API Server is running on http://localhost:8002');
+        log('INFO', 'API Docs: http://localhost:8002/docs');
         resolve(true);
       }
     });
@@ -145,7 +145,7 @@ async function main() {
   try {
     // Start backend
     await startBackend();
-    await waitForServer(8000);
+    await waitForServer(8002);
 
     console.log('');
 
@@ -159,8 +159,8 @@ async function main() {
 ╚═══════════════════════════════════════════════════════════╝
 
 🌐 Frontend App: http://localhost:3000
-📡 Backend API:  http://localhost:8000
-📚 API Docs:     http://localhost:8000/docs
+📡 Backend API:  http://localhost:8002
+📚 API Docs:     http://localhost:8002/docs
 📊 Metrics:      http://localhost:9090/metrics
 
 🎯 Opening dashboard in browser...
