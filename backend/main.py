@@ -317,6 +317,10 @@ def create_app() -> FastAPI:
     # Health monitor routes (Issue #16)
     app.include_router(health_router)
 
+    # External monitoring integrations (Issue #183)
+    from backend.monitoring_integrations import router as monitoring_router
+    app.include_router(monitoring_router)
+
     # Root endpoint
     @app.get("/")
     async def root():
