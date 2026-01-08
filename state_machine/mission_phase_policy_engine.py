@@ -21,6 +21,8 @@ from state_machine.state_engine import MissionPhase
 # Import error handling
 from core.error_handling import PolicyEvaluationError
 from core.component_health import get_health_monitor
+# Import input validation
+from core.input_validation import PolicyDecision as CorePolicyDecision, ValidationError
 
 logger = logging.getLogger(__name__)
 
@@ -224,7 +226,7 @@ class MissionPhasePolicyEngine:
         # Confidence in decision (higher if phase has specific rules)
         confidence = 0.9 if allowed_actions else 0.7
 
-        return PolicyDecision(
+        decision = PolicyDecision(
             mission_phase=mission_phase.value,
             anomaly_type=anomaly_type,
             severity=severity_level.value,
@@ -236,6 +238,25 @@ class MissionPhasePolicyEngine:
             confidence=confidence,
             reasoning=reasoning,
         )
+
+        # Validate the decision using core input validation
+        try:
+            # Map local fields to core PolicyDecision fields
+            core_decision_dict = {
+                'mission_phase': decision.mission_phase,
+                'anomaly_type': decision.anomaly_type,
+                'severity': decision.severity,
+                'recommended_action': decision.recommended_action,
+                'detection_confidence': decision.confidence,  # Map confidence to detection_confidence
+                'timestamp': '',  # Add empty timestamp as it's not available
+                'reasoning': decision.reasoning,
+            }
+            CorePolicyDecision.validate(core_decision_dict)
+        except ValidationError as e:
+            logger.warning(f"Policy decision validation failed: {e}")
+            # Continue with the decision but log the issue
+
+        return decision
 
     def _get_phase_config(self, mission_phase: MissionPhase) -> Optional[Dict]:
         """Get configuration for a specific mission phase."""

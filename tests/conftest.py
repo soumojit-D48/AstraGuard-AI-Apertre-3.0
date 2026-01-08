@@ -256,7 +256,8 @@ def setup_test_environment():
     import logging
     logging.getLogger('astraguard').setLevel(logging.WARNING)
     yield
-    # Cleanup after tests
+    # Cleanup after tests - ensure all logging handlers are closed
+    _cleanup_logging_handlers()
 
 
 @pytest.fixture(autouse=True)
@@ -267,6 +268,36 @@ def reset_singletons():
     yield
     # Reset after each test
     SystemHealthMonitor._instance = None
+
+
+# ============================================================================
+# LOGGING CLEANUP UTILITIES
+# ============================================================================
+
+def _cleanup_logging_handlers():
+    """Clean up all logging handlers to prevent I/O errors during pytest teardown."""
+    import logging
+
+    # Get all loggers
+    root_logger = logging.getLogger()
+    loggers = [root_logger] + [logging.getLogger(name) for name in logging.root.manager.loggerDict]
+
+    for logger in loggers:
+        # Close and remove all handlers
+        for handler in logger.handlers[:]:  # Copy the list to avoid modification during iteration
+            try:
+                # Flush any pending output
+                handler.flush()
+                # Close the handler
+                handler.close()
+                # Remove from logger
+                logger.removeHandler(handler)
+            except (OSError, ValueError):
+                # Handler might already be closed or invalid
+                pass
+
+    # Clear any cached handlers
+    logging.root.handlers.clear()
 
 
 # ============================================================================

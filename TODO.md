@@ -14,7 +14,7 @@
 ### 1. Complete Input Validation Integration (30 min)
 - [x] Integrate into anomaly_detector.py
 - [x] Integrate into state_machine.py
-- [ ] Integrate into policy_engine.py
+- [x] Integrate into policy_engine.py
 - [ ] Write unit tests (10 tests)
 - [ ] Test end-to-end validation
 
