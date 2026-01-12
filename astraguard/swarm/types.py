@@ -223,3 +223,62 @@ class SubscriptionID:
         if not isinstance(other, SubscriptionID):
             return False
         return self.id == other.id
+
+class PriorityEnum(int, Enum):
+    """Priority levels for intent messages.
+    
+    AVAILABILITY (1): Lowest - role changes, load balancing
+    PERFORMANCE (2): Medium - thrust optimization, attitude control
+    SAFETY (3): Highest - emergency stop, safe mode transitions
+    """
+    AVAILABILITY = 1
+    PERFORMANCE = 2
+    SAFETY = 3
+
+
+@dataclass
+class IntentMessage:
+    """Intent message for coordinating planned actions across constellation.
+    
+    Issue #402: Intent signal exchange protocol
+    - Communicates planned actions (attitude adjust, load shed, role change)
+    - Includes conflict scoring for collision detection
+    - Prioritized delivery with QoS=2 (reliable)
+    
+    Attributes:
+        action_type: Type of action (e.g., "attitude_adjust", "load_shed", "role_change")
+        parameters: Action parameters as dict (e.g., {"target_angle": 45.2, "duration": 30})
+        priority: Priority level (SAFETY > PERFORMANCE > AVAILABILITY)
+        sender: AgentID of intent originator
+        conflict_score: 0.0-1.0 estimated conflict vs known intents
+        sequence: Sequence number for ordering (Issue #403 prep)
+        timestamp: When intent was created
+    """
+    action_type: str
+    parameters: dict[str, Any]
+    priority: PriorityEnum
+    sender: AgentID
+    conflict_score: float = 0.0
+    sequence: int = 0
+    timestamp: datetime = field(default_factory=datetime.utcnow)
+
+    def __post_init__(self):
+        """Validate intent message fields."""
+        if not self.action_type:
+            raise ValueError("action_type must not be empty")
+        if not isinstance(self.priority, PriorityEnum):
+            raise ValueError("priority must be PriorityEnum instance")
+        if not (0.0 <= self.conflict_score <= 1.0):
+            raise ValueError("conflict_score must be 0.0-1.0")
+    
+    def to_dict(self) -> dict:
+        """Convert to dict for serialization."""
+        return {
+            "action_type": self.action_type,
+            "parameters": self.parameters,
+            "priority": self.priority.value,
+            "sender": self.sender.uuid.hex,
+            "conflict_score": self.conflict_score,
+            "sequence": self.sequence,
+            "timestamp": self.timestamp.isoformat(),
+        }

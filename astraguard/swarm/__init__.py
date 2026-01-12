@@ -22,11 +22,14 @@ from astraguard.swarm.types import (
     TopicFilter,
     SubscriptionID,
     MessageAck,
+    IntentMessage,
+    PriorityEnum,
 )
 from astraguard.swarm.bus import SwarmMessageBus
 from astraguard.swarm.compressor import StateCompressor, CompressionStats
 from astraguard.swarm.registry import SwarmRegistry, PeerState
 from astraguard.swarm.health_broadcaster import HealthBroadcaster, BroadcastMetrics
+from astraguard.swarm.intent_broadcaster import IntentBroadcaster, IntentStats
 
 __all__ = [
     # Models (Issue #397)
@@ -43,6 +46,9 @@ __all__ = [
     "TopicFilter",
     "SubscriptionID",
     "MessageAck",
+    # Intent types (Issue #402)
+    "IntentMessage",
+    "PriorityEnum",
     # Message bus (Issue #398)
     "SwarmMessageBus",
     # Compression (Issue #399)
@@ -54,4 +60,7 @@ __all__ = [
     # Health Broadcasting (Issue #401)
     "HealthBroadcaster",
     "BroadcastMetrics",
+    # Intent Broadcasting (Issue #402)
+    "IntentBroadcaster",
+    "IntentStats",
 ]
