@@ -14,6 +14,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
 from contextlib import asynccontextmanager
 import secrets
+from core.secrets import get_secret, mask_secret
 from pydantic import BaseModel
 
 # Import centralized secrets management
@@ -133,6 +134,8 @@ def _check_credential_security():
     """
     global _USING_DEFAULT_CREDENTIALS
 
+    metrics_user = get_secret("METRICS_USER")
+    metrics_password = get_secret("METRICS_PASSWORD")
     metrics_user = get_secret("metrics_user")
     metrics_password = get_secret("metrics_password")
 
@@ -277,6 +280,10 @@ app = FastAPI(
     lifespan=lifespan
 )
 
+# Include routers
+from api.contact import router as contact_router
+app.include_router(contact_router)
+
 # CORS configuration from environment variables
 # Security: Never use allow_origins=["*"] with allow_credentials=True in production
 ALLOWED_ORIGINS = get_secret("allowed_origins").split(",")
@@ -316,6 +323,8 @@ def get_current_username(credentials: HTTPBasicCredentials = Depends(security)):
         HTTPException 401: Invalid credentials
         HTTPException 500: Credentials not configured
     """
+    correct_username = get_secret("METRICS_USER")
+    correct_password = get_secret("METRICS_PASSWORD")
     correct_username = get_secret("metrics_user")
     correct_password = get_secret("metrics_password")
 

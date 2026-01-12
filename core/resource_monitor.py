@@ -56,8 +56,8 @@ def monitor_operation_resources(operation_name: Optional[str] = None):
             op_name = operation_name or func.__name__
             monitor = get_resource_monitor()
 
-            # Get initial metrics (without adding to history)
-            initial_metrics = monitor.get_current_metrics_no_history()
+            # Get initial metrics
+            initial_metrics = monitor.get_current_metrics()
 
             logger.debug(
                 f"Starting operation '{op_name}' - "
@@ -70,7 +70,7 @@ def monitor_operation_resources(operation_name: Optional[str] = None):
                 # Execute the function
                 result = func(*args, **kwargs)
 
-                # Get final metrics (adds to history)
+                # Get final metrics
                 final_metrics = monitor.get_current_metrics()
 
                 # Calculate resource usage during operation
@@ -99,7 +99,7 @@ def monitor_operation_resources(operation_name: Optional[str] = None):
                 return result
 
             except Exception as e:
-                # Log resource usage even on failure (adds to history)
+                # Log resource usage even on failure
                 final_metrics = monitor.get_current_metrics()
                 cpu_used = final_metrics.cpu_percent - initial_metrics.cpu_percent
                 memory_used = final_metrics.process_memory_mb - initial_metrics.process_memory_mb
