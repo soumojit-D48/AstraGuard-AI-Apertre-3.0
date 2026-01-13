@@ -10,6 +10,11 @@ from .schema import (
     validate_scenario,
     SCENARIO_SCHEMA,
 )
+from .parser import (
+    ScenarioExecutor,
+    execute_scenario_file,
+    run_scenario_file,
+)
 
 __all__ = [
     "FaultType",
@@ -20,4 +25,7 @@ __all__ = [
     "load_scenario",
     "validate_scenario",
     "SCENARIO_SCHEMA",
+    "ScenarioExecutor",
+    "execute_scenario_file",
+    "run_scenario_file",
 ]
