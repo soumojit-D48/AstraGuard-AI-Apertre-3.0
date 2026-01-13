@@ -335,6 +335,8 @@ class AdaptiveMemoryStore:
 
     def _cosine_similarity(self, a: Union[List[float], "np.ndarray"], b: Union[List[float], "np.ndarray"]) -> float:
         """Calculate cosine similarity between vectors."""
+        if len(a) != len(b):
+            raise ValueError("Embeddings must have the same length for cosine similarity")
         if np is not None:
             return np.dot(a, b) / (np.linalg.norm(a) * np.linalg.norm(b) + 1e-10)
         else:
