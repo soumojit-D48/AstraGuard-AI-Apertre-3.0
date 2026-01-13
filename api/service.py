@@ -283,7 +283,8 @@ app.include_router(contact_router)
 
 # CORS configuration from environment variables
 # Security: Never use allow_origins=["*"] with allow_credentials=True in production
-ALLOWED_ORIGINS = get_secret("allowed_origins").split(",")
+allowed_origins_str = get_secret("allowed_origins") or "http://localhost:3000,http://localhost:8000"
+ALLOWED_ORIGINS = [origin.strip() for origin in allowed_origins_str.split(",")]
 
 # CORS middleware
 app.add_middleware(
