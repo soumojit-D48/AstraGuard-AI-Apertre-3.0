@@ -54,7 +54,7 @@ services:
       - "5001:5000"      # Debug port
     
     volumes:
-      - ./config/astraguard/swarm-config.json:/etc/astraguard/swarm-config.json:ro
+      - ../../src/config/swarm-config.json:/etc/astraguard/swarm-config.json:ro
       - ./logs/agent-1:/var/log/astraguard
       - ./data/agent-1:/var/lib/astraguard
     
@@ -107,7 +107,7 @@ services:
       - "5002:5000"
     
     volumes:
-      - ./config/astraguard/swarm-config.json:/etc/astraguard/swarm-config.json:ro
+      - ../../src/config/swarm-config.json:/etc/astraguard/swarm-config.json:ro
       - ./logs/agent-2:/var/log/astraguard
       - ./data/agent-2:/var/lib/astraguard
     
@@ -159,7 +159,7 @@ services:
       - "5003:5000"
     
     volumes:
-      - ./config/astraguard/swarm-config.json:/etc/astraguard/swarm-config.json:ro
+      - ../../src/config/swarm-config.json:/etc/astraguard/swarm-config.json:ro
       - ./logs/agent-3:/var/log/astraguard
       - ./data/agent-3:/var/lib/astraguard
     
@@ -211,7 +211,7 @@ services:
       - "5004:5000"
     
     volumes:
-      - ./config/astraguard/swarm-config.json:/etc/astraguard/swarm-config.json:ro
+      - ../../src/config/swarm-config.json:/etc/astraguard/swarm-config.json:ro
       - ./logs/agent-4:/var/log/astraguard
       - ./data/agent-4:/var/lib/astraguard
     
@@ -263,7 +263,7 @@ services:
       - "5005:5000"
     
     volumes:
-      - ./config/astraguard/swarm-config.json:/etc/astraguard/swarm-config.json:ro
+      - ../../src/config/swarm-config.json:/etc/astraguard/swarm-config.json:ro
       - ./logs/agent-5:/var/log/astraguard
       - ./data/agent-5:/var/lib/astraguard
     
@@ -338,7 +338,7 @@ services:
     ports:
       - "9090:9090"
     volumes:
-      - ./config/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ../prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
       - prometheus-data:/prometheus
     networks:
       isl-net:
@@ -359,7 +359,7 @@ services:
       - GF_SECURITY_ADMIN_PASSWORD=admin
       - GF_INSTALL_PLUGINS=redis-datasource
     volumes:
-      - ./config/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ../grafana/provisioning:/etc/grafana/provisioning:ro
       - grafana-data:/var/lib/grafana
     networks:
       isl-net:
