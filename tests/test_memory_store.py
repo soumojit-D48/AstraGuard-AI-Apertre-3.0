@@ -190,6 +190,60 @@ class TestAdaptiveMemoryStore:
             self.memory.storage_path = original_path
             os.unlink(corrupted_path)
 
+    def test_concurrent_save_load_operations(self):
+        """Test concurrent save and load operations across multiple processes"""
+        import tempfile
+        import os
+
+        # Create a temporary file for testing
+        with tempfile.NamedTemporaryFile(delete=False, suffix='.pkl') as f:
+            temp_store_path = f.name
+
+        try:
+            # Initialize memory store with temp path
+            self.memory.storage_path = temp_store_path
+
+            # Add initial events
+            for i in range(5):
+                embedding = np.random.rand(384)
+                metadata = {'severity': 0.5, 'type': f'initial_event_{i}'}
+                self.memory.write(embedding, metadata)
+
+            # Save initial state
+            self.memory.save()
+
+            # Test concurrent operations using multiprocessing
+            num_processes = 4
+            with mp.Pool(processes=num_processes) as pool:
+                # Each process will perform save/load operations
+                args = [(i, temp_store_path) for i in range(num_processes)]
+                results = pool.map(_worker_concurrent_access, args)
+
+            # Verify all processes succeeded
+            assert all(results), "Some concurrent operations failed"
+
+            # Reload and verify final state
+            new_memory = AdaptiveMemoryStore()
+            new_memory.storage_path = temp_store_path
+            loaded = new_memory.load()
+            assert loaded, "Failed to load final state"
+
+            # Should have at least the initial 5 events plus events from processes
+            assert len(new_memory.memory) >= 5, f"Expected at least 5 events, got {len(new_memory.memory)}"
+
+            # Verify no corruption - all events should have valid metadata
+            for event in new_memory.memory:
+                assert 'type' in event.metadata
+                assert isinstance(event.metadata['type'], str)
+
+        finally:
+            # Clean up temp file and lock file
+            if os.path.exists(temp_store_path):
+                os.unlink(temp_store_path)
+            lock_file = temp_store_path + ".lock"
+            if os.path.exists(lock_file):
+                os.unlink(lock_file)
+
 
 if __name__ == '__main__':
     pytest.main([__file__, '-v'])

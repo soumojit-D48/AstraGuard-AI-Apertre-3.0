@@ -266,7 +266,7 @@ class AdaptiveMemoryStore:
     @with_timeout(seconds=60.0)
     @monitor_operation_resources()
     def save(self) -> None:
-        """Persist memory to disk with path validation."""
+        """Persist memory to disk with path validation and file locking."""
         with self._lock:
             try:
                 # Security: Validate storage path is within base directory (prevents path traversal)
@@ -286,8 +286,11 @@ class AdaptiveMemoryStore:
                     )
 
                 os.makedirs(os.path.dirname(resolved_path), exist_ok=True)
-                with open(resolved_path, "wb") as f:
-                    pickle.dump(self.memory, f)
+                # Use inter-process file lock to prevent concurrent access corruption
+                lock_path = resolved_path + ".lock"
+                with fasteners.InterProcessLock(lock_path):
+                    with open(resolved_path, "wb") as f:
+                        pickle.dump(self.memory, f)
                 logger.debug(f"Memory store saved to {resolved_path}")
             except Exception as e:
                 logger.error(f"Failed to save memory store: {e}", exc_info=True)
