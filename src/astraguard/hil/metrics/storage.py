@@ -2,6 +2,7 @@
 
 import json
 import asyncio
+import logging
 from pathlib import Path
 from typing import Dict, Any
 from datetime import datetime
@@ -20,9 +21,16 @@ class MetricsStorage:
             run_id: Unique identifier for this run
             results_dir: Base directory for results
         """
-        self.run_id = run_id
-        self.metrics_dir = Path(results_dir) / run_id
-        self.metrics_dir.mkdir(parents=True, exist_ok=True)
+        try:
+            self.run_id = run_id
+            self.metrics_dir = Path(results_dir) / run_id
+            self.metrics_dir.mkdir(parents=True, exist_ok=True)
+        except (OSError, PermissionError) as e:
+            logging.error(f"Failed to initialize MetricsStorage for run {run_id}: {e}")
+            raise
+        except Exception as e:
+            logging.error(f"Unexpected error initializing MetricsStorage for run {run_id}: {e}")
+            raise
 
     async def save_latency_stats(self, collector: LatencyCollector) -> Dict[str, str]:
         """
@@ -34,27 +42,34 @@ class MetricsStorage:
         Returns:
             Dict with paths to saved files
         """
-        stats = collector.get_stats()
-        summary = collector.get_summary()
+        try:
+            stats = collector.get_stats()
+            summary = collector.get_summary()
 
-        # Summary JSON with all statistics
-        summary_dict = {
-            "run_id": self.run_id,
-            "timestamp": datetime.now().isoformat(),
-            "total_measurements": len(collector.measurements),
-            "measurement_types": summary.get("measurement_types", {}),
-            "stats": stats,
-            "stats_by_satellite": summary.get("stats_by_satellite", {}),
-        }
+            # Summary JSON with all statistics
+            summary_dict = {
+                "run_id": self.run_id,
+                "timestamp": datetime.now().isoformat(),
+                "total_measurements": len(collector.measurements),
+                "measurement_types": summary.get("measurement_types", {}),
+                "stats": stats,
+                "stats_by_satellite": summary.get("stats_by_satellite", {}),
+            }
 
-        summary_path = self.metrics_dir / "latency_summary.json"
-        await asyncio.to_thread(summary_path.write_text, json.dumps(summary_dict, indent=2, default=str))
+            summary_path = self.metrics_dir / "latency_summary.json"
+            await asyncio.to_thread(summary_path.write_text, json.dumps(summary_dict, indent=2, default=str))
 
-        # Raw CSV for external analysis
-        csv_path = self.metrics_dir / "latency_raw.csv"
-        await asyncio.to_thread(collector.export_csv, str(csv_path))
+            # Raw CSV for external analysis
+            csv_path = self.metrics_dir / "latency_raw.csv"
+            await asyncio.to_thread(collector.export_csv, str(csv_path))
 
-        return {"summary": str(summary_path), "raw": str(csv_path)}
+            return {"summary": str(summary_path), "raw": str(csv_path)}
+        except (OSError, PermissionError) as e:
+            logging.error(f"Failed to save latency stats for run {self.run_id}: {e}")
+            raise
+        except Exception as e:
+            logging.error(f"Unexpected error saving latency stats for run {self.run_id}: {e}")
+            raise
 
     async def get_run_metrics(self) -> Dict[str, Any]:
         """
@@ -70,8 +85,14 @@ class MetricsStorage:
         try:
             content = await asyncio.to_thread(summary_path.read_text)
             return json.loads(content)
+        except (OSError, PermissionError, IsADirectoryError) as e:
+            logging.error(f"Failed to read metrics file {summary_path}: {e}")
+            return None
+        except json.JSONDecodeError as e:
+            logging.error(f"Failed to parse JSON from {summary_path}: {e}")
+            return None
         except Exception as e:
-            print(f"[ERROR] Failed to load metrics from {summary_path}: {e}")
+            logging.error(f"Unexpected error loading metrics from {summary_path}: {e}")
             return None
 
     def compare_runs(self, other_run_id: str) -> Dict[str, Any]:
@@ -136,16 +157,23 @@ class MetricsStorage:
         Returns:
             List of recent run IDs
         """
-        results_path = Path(results_dir)
-        if not await asyncio.to_thread(results_path.exists):
+        try:
+            results_path = Path(results_dir)
+            if not await asyncio.to_thread(results_path.exists):
+                return []
+
+            # Find directories with latency metrics
+            runs = []
+            for run_dir in await asyncio.to_thread(lambda: sorted(results_path.iterdir(), reverse=True)):
+                if run_dir.is_dir() and await asyncio.to_thread((run_dir / "latency_summary.json").exists):
+                    runs.append(run_dir.name)
+                    if len(runs) >= limit:
+                        break
+
+            return runs
+        except (OSError, PermissionError) as e:
+            logging.error(f"Failed to get recent runs from {results_dir}: {e}")
             return []
-
-        # Find directories with latency metrics
-        runs = []
-        for run_dir in await asyncio.to_thread(lambda: sorted(results_path.iterdir(), reverse=True)):
-            if run_dir.is_dir() and await asyncio.to_thread((run_dir / "latency_summary.json").exists):
-                runs.append(run_dir.name)
-                if len(runs) >= limit:
-                    break
-
-        return runs
+        except Exception as e:
+            logging.error(f"Unexpected error getting recent runs from {results_dir}: {e}")
+            return []
