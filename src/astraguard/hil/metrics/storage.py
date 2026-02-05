@@ -33,9 +33,16 @@ class MetricsStorage:
             run_id (str): Unique identifier for this run.
             results_dir (str, optional): Base directory for results. Defaults to "astraguard/hil/results".
         """
-        self.run_id = run_id
-        self.metrics_dir = Path(results_dir) / run_id
-        self.metrics_dir.mkdir(parents=True, exist_ok=True)
+        try:
+            self.run_id = run_id
+            self.metrics_dir = Path(results_dir) / run_id
+            self.metrics_dir.mkdir(parents=True, exist_ok=True)
+        except (OSError, PermissionError) as e:
+            logging.error(f"Failed to initialize MetricsStorage for run {run_id}: {e}")
+            raise
+        except Exception as e:
+            logging.error(f"Unexpected error initializing MetricsStorage for run {run_id}: {e}")
+            raise
 
     def save_latency_stats(self, collector: LatencyCollector) -> Dict[str, str]:
         """
@@ -48,18 +55,19 @@ class MetricsStorage:
             Dict[str, str]: Dictionary with paths to saved files, containing 'summary' and 'raw' keys
                 pointing to the JSON summary and CSV raw data files respectively.
         """
-        stats = collector.get_stats()
-        summary = collector.get_summary()
+        try:
+            stats = collector.get_stats()
+            summary = collector.get_summary()
 
-        # Summary JSON with all statistics
-        summary_dict = {
-            "run_id": self.run_id,
-            "timestamp": datetime.now().isoformat(),
-            "total_measurements": len(collector.measurements),
-            "measurement_types": summary.get("measurement_types", {}),
-            "stats": stats,
-            "stats_by_satellite": summary.get("stats_by_satellite", {}),
-        }
+            # Summary JSON with all statistics
+            summary_dict = {
+                "run_id": self.run_id,
+                "timestamp": datetime.now().isoformat(),
+                "total_measurements": len(collector.measurements),
+                "measurement_types": summary.get("measurement_types", {}),
+                "stats": stats,
+                "stats_by_satellite": summary.get("stats_by_satellite", {}),
+            }
 
         summary_path = self.metrics_dir / "latency_summary.json"
         summary_path.write_text(json.dumps(summary_dict, indent=2, default=str))
@@ -68,7 +76,13 @@ class MetricsStorage:
         csv_path = self.metrics_dir / "latency_raw.csv"
         collector.export_csv(str(csv_path))
 
-        return {"summary": str(summary_path), "raw": str(csv_path)}
+            return {"summary": str(summary_path), "raw": str(csv_path)}
+        except (OSError, PermissionError) as e:
+            logging.error(f"Failed to save latency stats for run {self.run_id}: {e}")
+            raise
+        except Exception as e:
+            logging.error(f"Unexpected error saving latency stats for run {self.run_id}: {e}")
+            raise
 
     def get_run_metrics(self) -> Dict[str, Any]:
         """
@@ -86,7 +100,7 @@ class MetricsStorage:
             content = summary_path.read_text()
             return json.loads(content)
         except Exception as e:
-            print(f"[ERROR] Failed to load metrics from {summary_path}: {e}")
+            logging.error(f"Unexpected error loading metrics from {summary_path}: {e}")
             return None
 
     def compare_runs(self, other_run_id: str) -> Dict[str, Any]:
