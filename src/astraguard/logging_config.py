@@ -3,7 +3,6 @@
 JSON-based structured logging for enterprise observability (Azure Monitor compatible).
 """
 
-from PIL.ExifTags import Base
 import logging
 import json
 import sys
