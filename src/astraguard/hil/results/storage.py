@@ -144,7 +144,7 @@ class ResultStorage:
             filepath.write_text(json_str)
             logger.info(f"Saved scenario result: {filepath}")
             return str(filepath)
-        except (OSError, IOError, PermissionError) as e:
+        except OSError as e:
             logger.error(
                 f"Failed to write result file: {e}",
                 extra={
