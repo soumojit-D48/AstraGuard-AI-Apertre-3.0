@@ -8,6 +8,7 @@ Classes:
     ResultStorage: Handles saving, loading, and managing test result data.
 """
 
+import asyncio
 import json
 from typing import List, Dict, Any, Optional
 from pathlib import Path
@@ -81,21 +82,21 @@ class ResultStorage:
             OSError: If there is an issue reading result files.
             json.JSONDecodeError: If a result file contains invalid JSON.
         """
-        results = []
         pattern = f"{scenario_name}_*.json"
         result_files = sorted(self.results_dir.glob(pattern), reverse=True)[:limit]
 
-        for result_file in result_files:
+        async def load_result(result_file):
             try:
-                result_data = await asyncio.to_thread(json.loads, result_file.read_text())
-                results.append(result_data)
+                return await asyncio.to_thread(json.loads, result_file.read_text())
             except Exception as e:
                 print(f"[WARN] Failed to load result {result_file.name}: {e}")
+                return None
 
-        return results
+        results = await asyncio.gather(*[load_result(f) for f in result_files])
+        return [r for r in results if r is not None]
 
-    def get_recent_campaigns(self, limit: int = 10) -> List[Dict[str, Any]]:
-        """Retrieve recent campaign summaries.
+    async def get_recent_campaigns(self, limit: int = 10) -> List[Dict[str, Any]]:
+        """Retrieve recent campaign summaries asynchronously.
 
         Args:
             limit (int, optional): Maximum campaigns to return. Defaults to 10.
@@ -107,22 +108,22 @@ class ResultStorage:
             OSError: If there is an issue reading campaign files.
             json.JSONDecodeError: If a campaign file contains invalid JSON.
         """
-        campaigns = []
         campaign_files = sorted(
             self.results_dir.glob("campaign_*.json"), reverse=True
         )[:limit]
 
-        for campaign_file in campaign_files:
+        async def load_campaign(campaign_file):
             try:
-                campaign_data = json.loads(campaign_file.read_text())
-                campaigns.append(campaign_data)
+                return await asyncio.to_thread(json.loads, campaign_file.read_text())
             except Exception as e:
                 print(f"[WARN] Failed to load campaign {campaign_file.name}: {e}")
+                return None
 
-        return campaigns
+        campaigns = await asyncio.gather(*[load_campaign(f) for f in campaign_files])
+        return [c for c in campaigns if c is not None]
 
-    def get_campaign_summary(self, campaign_id: str) -> Optional[Dict[str, Any]]:
-        """Retrieve specific campaign by ID.
+    async def get_campaign_summary(self, campaign_id: str) -> Optional[Dict[str, Any]]:
+        """Retrieve specific campaign by ID asynchronously.
 
         Args:
             campaign_id (str): Campaign timestamp ID (YYYYMMDD_HHMMSS).
@@ -135,23 +136,23 @@ class ResultStorage:
             json.JSONDecodeError: If the campaign file contains invalid JSON.
         """
         campaign_file = self.results_dir / f"campaign_{campaign_id}.json"
-        if not campaign_file.exists():
+        if not await asyncio.to_thread(campaign_file.exists):
             return None
 
         try:
-            return json.loads(campaign_file.read_text())
+            return await asyncio.to_thread(json.loads, campaign_file.read_text())
         except Exception as e:
             print(f"[ERROR] Failed to load campaign {campaign_id}: {e}")
             return None
 
-    def get_result_statistics(self) -> Dict[str, Any]:
-        """Get aggregate statistics across all results.
+    async def get_result_statistics(self) -> Dict[str, Any]:
+        """Get aggregate statistics across all results asynchronously.
 
         Returns:
             Dict[str, Any]: Dict with statistics including total_campaigns,
                 total_scenarios, total_passed, and avg_pass_rate.
         """
-        campaigns = self.get_recent_campaigns(limit=999)
+        campaigns = await self.get_recent_campaigns(limit=999)
         if not campaigns:
             return {
                 "total_campaigns": 0,
@@ -171,8 +172,8 @@ class ResultStorage:
             "avg_pass_rate": avg_pass_rate,
         }
 
-    def clear_results(self, older_than_days: int = 30) -> int:
-        """Remove old result files.
+    async def clear_results(self, older_than_days: int = 30) -> int:
+        """Remove old result files asynchronously.
 
         Args:
             older_than_days (int, optional): Delete files older than this many days. Defaults to 30.
@@ -188,9 +189,13 @@ class ResultStorage:
         cutoff_time = time() - (older_than_days * 86400)
         deleted_count = 0
 
-        for result_file in self.results_dir.glob("*.json"):
-            if result_file.stat().st_mtime < cutoff_time:
-                result_file.unlink()
+        async def check_and_delete(result_file):
+            nonlocal deleted_count
+            if await asyncio.to_thread(result_file.stat().st_mtime.__lt__, cutoff_time):
+                await asyncio.to_thread(result_file.unlink)
                 deleted_count += 1
+
+        tasks = [check_and_delete(f) for f in self.results_dir.glob("*.json")]
+        await asyncio.gather(*tasks)
 
         return deleted_count
