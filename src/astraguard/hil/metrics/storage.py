@@ -3,12 +3,12 @@
 This module provides functionality to store, retrieve, and compare latency metrics
 collected during HIL testing runs. It handles both aggregated statistics and raw
 measurement data, enabling performance analysis and regression detection.
-# Fix: Ensure file encoding/syntax is pushed correctly
 """
 
 import json
+import logging
 from pathlib import Path
-from typing import Dict, Any
+from typing import Dict, Any, List, Optional, cast
 from datetime import datetime
 
 from astraguard.hil.metrics.latency import LatencyCollector
@@ -26,7 +26,7 @@ class MetricsStorage:
         metrics_dir (Path): Directory path where metrics for this run are stored.
     """
 
-    def __init__(self, run_id: str, results_dir: str = "astraguard/hil/results"):
+    def __init__(self, run_id: str, results_dir: str = "astraguard/hil/results") -> None:
         """
         Initialize metrics storage.
 
@@ -85,7 +85,7 @@ class MetricsStorage:
             logging.error(f"Unexpected error saving latency stats for run {self.run_id}: {e}")
             raise
 
-    def get_run_metrics(self) -> Dict[str, Any]:
+    def get_run_metrics(self) -> Optional[Dict[str, Any]]:
         """
         Load metrics from this run.
 
@@ -99,7 +99,7 @@ class MetricsStorage:
 
         try:
             content = summary_path.read_text()
-            return json.loads(content)
+            return cast(Dict[str, Any], json.loads(content))
         except (OSError, PermissionError, IsADirectoryError) as e:
             logging.error(f"Failed to read metrics file {summary_path}: {e}")
             return None
@@ -112,14 +112,19 @@ class MetricsStorage:
 
     def compare_runs(self, other_run_id: str) -> Dict[str, Any]:
         """
-        Compare metrics between two runs.
+        Compare latency performance between this run and a historical run.
+
+        Calculates the delta (difference) in Mean and P95 latency for all
+        common metrics available in both runs. Useful for regression testing.
 
         Args:
-            other_run_id (str): Other run ID to compare against.
+            other_run_id (str): ID of the historical run to compare against.
 
         Returns:
-            Dict[str, Any]: Comparison results containing metrics differences between the two runs.
-                Includes error information if metrics cannot be loaded.
+            Dict[str, Any]: A comparison report containing:
+                - run1, run2 (str): IDs of compared runs.
+                - metrics (Dict): Per-metric differences (diff_ms).
+                - error (str, optional): Error message if loading fails.
         """
         other_storage = MetricsStorage(other_run_id)
         other_metrics = other_storage.get_run_metrics()
@@ -131,7 +136,7 @@ class MetricsStorage:
         if this_metrics is None:
             return {"error": f"Could not load metrics for run {self.run_id}", "metrics": {}}
 
-        comparison = {
+        comparison: Dict[str, Any] = {
             "run1": self.run_id,
             "run2": other_run_id,
             "timestamp": datetime.now().isoformat(),
@@ -162,7 +167,7 @@ class MetricsStorage:
     @staticmethod
     def get_recent_runs(
         results_dir: str = "astraguard/hil/results", limit: int = 10
-    ) -> list:
+    ) -> List[str]:
         """
         Get recent metric runs.
 

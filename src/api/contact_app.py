@@ -8,9 +8,10 @@ from fastapi.middleware.cors import CORSMiddleware
 from typing import List
 
 
-from api.contact import router as contact_router
+
 
 app: FastAPI = FastAPI(title="AstraGuard Contact API (dev)")
+
 
 # Allow local frontend (python http.server) and localhost same-origin
 ALLOWED_ORIGINS: List[str] = [
@@ -28,4 +29,11 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-app.include_router(contact_router)
+try:
+    app.include_router(contact_router)
+except RuntimeError:
+    logger.critical(
+        "Failed to include contact router in FastAPI application.",
+        exc_info=True,
+    )
+    raise

@@ -143,56 +143,57 @@ class HealthCheckResponse(BaseModel):
     error: Optional[str] = None
 
 
+class LoginRequest(BaseModel):
+    """Login request."""
+    username: str = Field(..., min_length=3, max_length=50)
+    password: str = Field(..., min_length=8)
+
+
+class TokenResponse(BaseModel):
+    """JWT token response."""
+    access_token: str
+    token_type: str
+
+
 class UserCreateRequest(BaseModel):
     """Request to create a new user."""
     username: str = Field(..., min_length=3, max_length=50)
-    password: str = Field(..., min_length=8)
-    role: UserRole = UserRole.ANALYST
-    email: Optional[str] = None
+    email: str = Field(..., pattern=r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$')
+    role: UserRole
+    password: Optional[str] = Field(None, min_length=8)
 
 
 class UserResponse(BaseModel):
-    """Response model for user data."""
+    """User information response."""
     id: str
     username: str
-    role: UserRole
-    email: Optional[str] = None
+    email: str
+    role: str
     created_at: datetime
     is_active: bool
 
 
 class APIKeyCreateRequest(BaseModel):
-    """Request to create a new API key."""
-    name: str = Field(..., min_length=1, max_length=50)
-    scopes: List[str] = Field(default_factory=list)
-    expires_in_days: Optional[int] = Field(None, ge=1, le=365)
+    """Request to create an API key."""
+    name: str = Field(..., min_length=1, max_length=100)
+    permissions: List[str] = Field(..., min_length=1)
 
 
 class APIKeyResponse(BaseModel):
-    """Response model for API key metadata (without secret)."""
+    """API key information response (without the key value)."""
     id: str
     name: str
-    prefix: str
-    user_id: str
-    scopes: List[str]
+    permissions: List[str]
     created_at: datetime
-    expires_at: Optional[datetime] = None
-    last_used_at: Optional[datetime] = None
-    is_active: bool
+    expires_at: Optional[datetime]
+    last_used: Optional[datetime]
 
 
-class APIKeyCreateResponse(APIKeyResponse):
-    """Response model for newly created API key (includes secret)."""
-    secret_key: str
-
-
-class LoginRequest(BaseModel):
-    """Request to login."""
-    username: str
-    password: str
-
-
-class TokenResponse(BaseModel):
-    """Response with access token."""
-    access_token: str
-    token_type: str = "bearer"
+class APIKeyCreateResponse(BaseModel):
+    """API key creation response (includes the key value)."""
+    id: str
+    name: str
+    key: str
+    permissions: List[str]
+    created_at: datetime
+    expires_at: Optional[datetime]
