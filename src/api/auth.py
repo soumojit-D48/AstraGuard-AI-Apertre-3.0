@@ -8,17 +8,18 @@ Uses core authentication logic for API key management and RBAC.
 import os
 import hashlib
 from datetime import datetime
-from typing import Dict, List, Optional, Set
+from typing import Dict, List, Optional, Set, Callable, Awaitable
+
 from fastapi import HTTPException, status, Request, Depends
 from fastapi.security import APIKeyHeader
 import logging
-from core.auth import APIKey, APIKeyManager, get_api_key_manager
+from core.auth import APIKey, APIKeyManager
 from core.secrets import get_secret
 
 logger = logging.getLogger(__name__)
 
 # Global API key manager instance
-_api_key_manager = None
+_api_key_manager: Optional[APIKeyManager] = None
 
 def get_api_key_manager() -> APIKeyManager:
     """Get the global API key manager instance."""
@@ -68,7 +69,7 @@ async def get_api_key(request: Request, api_key: str = Depends(api_key_header)) 
         )
 
 
-def require_permission(permission: str):
+def require_permission(permission: str) -> Callable[[APIKey], Awaitable[APIKey]]:
     """
     Create a dependency that requires a specific permission.
 
@@ -90,7 +91,7 @@ def require_permission(permission: str):
 
 
 # Initialize API keys from environment variable (optional)
-def initialize_from_env():
+def initialize_from_env() -> None:
     """Initialize API keys from environment variables."""
     api_keys_env = get_secret("api_keys")
     if api_keys_env:
