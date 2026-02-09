@@ -33,11 +33,11 @@ class AnomalyEvent:
     mission_phase: str
     telemetry_data: Dict[str, Any]
     explanation: Optional[str] = None
-    recovery_actions: List[Dict[str, Any]] = None
+    recovery_actions: Optional[List[Dict[str, Any]]] = None
     resolved: bool = False
     resolution_time: Optional[datetime] = None
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         if self.recovery_actions is None:
             self.recovery_actions = []
 
@@ -60,9 +60,9 @@ class RecoveryAction:
     success: bool
     duration_seconds: float
     error_message: Optional[str] = None
-    metadata: Dict[str, Any] = None
+    metadata: Optional[Dict[str, Any]] = None
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         if self.metadata is None:
             self.metadata = {}
 
@@ -210,16 +210,16 @@ class AnomalyReportGenerator:
         resolved_anomalies = sum(1 for a in filtered_anomalies if a.resolved)
         critical_anomalies = sum(1 for a in filtered_anomalies if a.severity == "CRITICAL")
 
-        anomaly_types = {}
+        anomaly_types: Dict[str, int] = {}
         for anomaly in filtered_anomalies:
             anomaly_types[anomaly.anomaly_type] = anomaly_types.get(anomaly.anomaly_type, 0) + 1
 
-        recovery_stats = {}
+        recovery_stats: Dict[str, int] = {}
         for recovery in filtered_recoveries:
             recovery_stats[recovery.action_type] = recovery_stats.get(recovery.action_type, 0) + 1
 
         # Calculate MTTR (Mean Time To Resolution) for resolved anomalies
-        resolution_times = []
+        resolution_times: List[float] = []
         for anomaly in filtered_anomalies:
             if anomaly.resolved and anomaly.resolution_time:
                 mttr = (anomaly.resolution_time - anomaly.timestamp).total_seconds()
