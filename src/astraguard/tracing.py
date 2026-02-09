@@ -15,12 +15,12 @@ from opentelemetry.instrumentation.sqlalchemy import SQLAlchemyInstrumentor
 from contextlib import contextmanager, asynccontextmanager
 import logging
 import os
-from typing import Optional, Any
+from typing import Optional, Any, Dict, Tuple, Generator, AsyncGenerator
 from core.secrets import get_secret
 import asyncio
 from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
 
-logger = logging.getLogger(__name__)
+logger: logging.Logger = logging.getLogger(__name__)
 
 # ============================================================================
 # JAEGER EXPORTER CONFIGURATION
@@ -100,7 +100,7 @@ def initialize_tracing(
         return TracerProvider()
 
 
-def setup_auto_instrumentation():
+def setup_auto_instrumentation() -> None:
     """
     Setup automatic instrumentation for common libraries
     Must be called before creating FastAPI app
@@ -116,7 +116,7 @@ def setup_auto_instrumentation():
         logger.warning(f"⚠️  Failed to setup auto-instrumentation: {e}")
 
 
-def instrument_fastapi(app):
+def instrument_fastapi(app: Any) -> None:
     """
     Instrument FastAPI application with OpenTelemetry
 
@@ -142,7 +142,7 @@ def get_tracer(name: str = __name__) -> trace.Tracer:
 
 
 @contextmanager
-def span(name: str, attributes: Optional[dict] = None):
+def span(name: str, attributes: Optional[Dict[str, Any]] = None) -> Generator[Any, None, None]:
     """
     Context manager for creating manual OpenTelemetry spans.
 
@@ -171,7 +171,7 @@ def span(name: str, attributes: Optional[dict] = None):
 
 
 @contextmanager
-def span_anomaly_detection(data_size: int, model_name: str = "default"):
+def span_anomaly_detection(data_size: int, model_name: str = "default") -> Generator[Any, None, None]:
     """
     Trace anomaly detection workflow with sub-spans
     
@@ -192,7 +192,7 @@ def span_anomaly_detection(data_size: int, model_name: str = "default"):
 
 
 @contextmanager
-def span_model_inference(model_type: str, input_shape: tuple):
+def span_model_inference(model_type: str, input_shape: Tuple[Any, ...]) -> Generator[Any, None, None]:
     """
     Trace ML model inference
     
@@ -208,7 +208,7 @@ def span_model_inference(model_type: str, input_shape: tuple):
 
 
 @contextmanager
-def span_circuit_breaker(name: str, operation: str):
+def span_circuit_breaker(name: str, operation: str) -> Generator[Any, None, None]:
     """
     Trace circuit breaker operations
     
@@ -224,7 +224,7 @@ def span_circuit_breaker(name: str, operation: str):
 
 
 @contextmanager
-def span_retry(endpoint: str, attempt: int):
+def span_retry(endpoint: str, attempt: int) -> Generator[Any, None, None]:
     """
     Trace retry attempts
     
@@ -240,7 +240,7 @@ def span_retry(endpoint: str, attempt: int):
 
 
 @contextmanager
-def span_external_call(service: str, operation: str, timeout: float = None):
+def span_external_call(service: str, operation: str, timeout: Optional[float] = None) -> Generator[Any, None, None]:
     """
     Trace external service calls (API, database, etc.)
     
@@ -259,7 +259,7 @@ def span_external_call(service: str, operation: str, timeout: float = None):
 
 
 @contextmanager
-def span_database_query(query_type: str, table: str = None):
+def span_database_query(query_type: str, table: Optional[str] = None) -> Generator[Any, None, None]:
     """
     Trace database operations
     
@@ -276,7 +276,7 @@ def span_database_query(query_type: str, table: str = None):
 
 
 @contextmanager
-def span_cache_operation(operation: str, key: str, cache_type: str = "redis"):
+def span_cache_operation(operation: str, key: str, cache_type: str = "redis") -> Generator[Any, None, None]:
     """
     Trace cache operations
     
@@ -297,7 +297,7 @@ def span_cache_operation(operation: str, key: str, cache_type: str = "redis"):
 # TRACING SHUTDOWN
 # ============================================================================
 
-def shutdown_tracing():
+def shutdown_tracing() -> None:
     """
     Gracefully shutdown tracer and flush pending spans
     Call this on application shutdown
@@ -318,7 +318,7 @@ def shutdown_tracing():
 # ============================================================================
 
 @asynccontextmanager
-async def async_span(name: str, attributes: Optional[dict] = None):
+async def async_span(name: str, attributes: Optional[Dict[str, Any]] = None) -> AsyncGenerator[Any, None]:
     """
     Async context manager for creating spans
 
@@ -340,7 +340,7 @@ async def async_span(name: str, attributes: Optional[dict] = None):
 
 
 @asynccontextmanager
-async def async_span_anomaly_detection(data_size: int, model_name: str = "default"):
+async def async_span_anomaly_detection(data_size: int, model_name: str = "default") -> AsyncGenerator[Any, None]:
     """
     Async trace anomaly detection workflow with sub-spans
 
@@ -361,7 +361,7 @@ async def async_span_anomaly_detection(data_size: int, model_name: str = "defaul
 
 
 @asynccontextmanager
-async def async_span_external_call(service: str, operation: str, timeout: float = None):
+async def async_span_external_call(service: str, operation: str, timeout: Optional[float] = None) -> AsyncGenerator[Any, None]:
     """
     Async trace external service calls (API, database, etc.)
 
