@@ -54,14 +54,13 @@ class TestPathResolution:
         assert project_root.exists()
     
     def test_project_root_contains_src_directory(self):
-        """Test that project root contains the src directory."""
+        """Test that project root correctly resolves to the src directory."""
         from api import index as index_module
-        
-        src_dir = index_module.project_root / "src"
-        assert src_dir.exists()
-        assert src_dir.is_dir()
 
-
+        project_root = index_module.project_root
+        assert project_root.exists()
+        assert project_root.is_dir()
+        assert project_root.name == "src"
 class TestSysPathManipulation:
     """Test sys.path manipulation logic."""
     
