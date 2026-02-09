@@ -20,7 +20,6 @@ import pytest
 import logging
 from pathlib import Path
 from unittest.mock import patch, MagicMock
-from typing import List
 
 
 class TestPathResolution:
