@@ -753,7 +753,8 @@ async def get_latest_telemetry(api_key: APIKey = Depends(get_api_key)) -> Dict[s
     """Get the most recent telemetry data point."""
     async with telemetry_lock:
         if latest_telemetry_data is None:
-            raise HTTPException(status_code=404, detail="No telemetry data available")
+            # Maintain backward-compatible contract: structured "no_data" response with HTTP 200
+            return create_response("no_data", None)
         return create_response("success", latest_telemetry_data.copy())
 
 
