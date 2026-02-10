@@ -270,7 +270,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
     # Cleanup
     if memory_store:
-        memory_store.save()
+        await memory_store.save()
     if redis_client:
         await redis_client.close()
 
@@ -663,7 +663,7 @@ async def _process_telemetry(telemetry: TelemetryInput, request_start: float) ->
             telemetry.current or 0.0,
             telemetry.wheel_speed or 0.0
         ])
-        memory_store.write(
+        await memory_store.write(
             embedding=embedding,
             metadata={
                 "anomaly_type": anomaly_type,
@@ -873,21 +873,24 @@ async def get_anomaly_history(
     severity_min: Optional[float] = None
 ) -> AnomalyHistoryResponse:
     """Retrieve anomaly history with optional filtering."""
-    # Convert deque to list for filtering operations
-    filtered = list(anomaly_history)
+    # Efficient filtering without converting entire deque to list upfront
+    filtered = []
 
-    # Filter by time range
-    if start_time:
-        filtered = [a for a in filtered if a.timestamp >= start_time]
-    if end_time:
-        filtered = [a for a in filtered if a.timestamp <= end_time]
+    # Iterate through deque in reverse order (most recent first) for efficiency
+    for anomaly in reversed(anomaly_history):
+        # Apply filters
+        if start_time and anomaly.timestamp < start_time:
+            continue
+        if end_time and anomaly.timestamp > end_time:
+            continue
+        if severity_min is not None and anomaly.severity_score < severity_min:
+            continue
 
-    # Filter by severity
-    if severity_min is not None:
-        filtered = [a for a in filtered if a.severity_score >= severity_min]
+        filtered.append(anomaly)
 
-    # Apply limit (get last N items)
-    filtered = filtered[-limit:] if len(filtered) > limit else filtered
+        # Stop once we have enough results
+        if len(filtered) >= limit:
+            break
 
     return AnomalyHistoryResponse(
         count=len(filtered),
