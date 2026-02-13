@@ -117,7 +117,16 @@ class SubmissionsResponse(BaseModel):
 
 # Database initialization
 def init_database() -> None:
-    """Initialize SQLite database with contact_submissions table"""
+
+    """Initialize SQLite database with contact_submissions table
+        Creates the 'contact_submissions' table if it doesn't exist, along with
+    indices on 'submitted_at' and 'status' for query performance.
+    
+    The database file is created at `data/contact_submissions.db` relative to the
+    application root.
+    """
+
+
     DATA_DIR.mkdir(exist_ok=True)
     
     conn = sqlite3.connect(DB_PATH)
@@ -220,7 +229,19 @@ async def save_submission(
     ip_address: str,
     user_agent: str
 ) -> Optional[int]:
-    """Save submission to database and return submission ID"""
+    """Persist a contact form submission to the database.
+
+    Args:
+        submission (ContactSubmission): The validated submission data (name, email, message, etc.).
+        ip_address (str): Client IP address for auditing and spam control.
+        user_agent (str): Client User-Agent string.
+
+    Returns:
+        int: The primary key ID of the newly created submission record.
+
+    Raises:
+        sqlite3.Error: If a database error occurs during insertion"""
+
 
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
@@ -430,7 +451,7 @@ async def get_submissions(
         ORDER BY submitted_at DESC
         LIMIT ? OFFSET ?
     """
-    params.extend([limit, offset])
+    params.extend([str(limit), str(offset)])
     
     rows = cursor.execute(query, params).fetchall()
     conn.close()
