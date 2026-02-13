@@ -53,7 +53,7 @@ REQUIRED_DIRS = [
 # Ports that AstraGuard services commonly use
 SERVICE_PORTS: Dict[int, str] = {
     8000: "FastAPI (default)",
-    8002: "FastAPI (start-app)",
+    8002: "FastAPI (start-app.js)",
     3000: "Next.js frontend",
     8501: "Streamlit dashboard",
     6379: "Redis",
@@ -117,7 +117,7 @@ def _run(cmd: List[str], timeout: int = 10) -> Tuple[bool, str]:
         return False, f"command not found: {cmd[0]}"
     except subprocess.TimeoutExpired:
         return False, f"command timed out after {timeout}s"
-    except Exception as exc:  # noqa: BLE001
+    except (OSError, ValueError) as exc:
         return False, str(exc)
 
 
@@ -285,7 +285,7 @@ def check_docker() -> bool:
             _info("Start Docker Desktop or run: sudo systemctl start docker")
             ok = False
     else:
-        _warn("Docker not found (optional, but needed for containerised dev)")
+        _warn("Docker not found (optional, but needed for containerized dev)")
         _info("Install from https://docs.docker.com/get-docker/")
         ok = False
 
