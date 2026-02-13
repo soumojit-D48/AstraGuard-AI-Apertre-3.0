@@ -6,7 +6,8 @@ FastAPI-based REST API for telemetry ingestion and anomaly detection.
 
 import os
 import time
-import json
+import asyncio
+from typing import List, Optional, Any, Union
 from datetime import datetime, timedelta
 from collections import deque
 from asyncio import Lock
@@ -426,26 +427,17 @@ async def process_telemetry_batch(telemetry_list: List[Dict[str, Any]]) -> Dict[
         try:
             # Process individual telemetry (extracted from submit_telemetry logic)
             processed_count += 1
-
-            # Check for anomalies
-            anomaly_score = anomaly_detector.detect_anomaly(telemetry)
-            if anomaly_score > 0.7:
+            
+            # Collect detected anomalies
+            if result.get('anomaly_detected'):
                 anomalies_detected += 1
-
-                # Store anomaly
-                anomaly = AnomalyEvent(
-                    timestamp=datetime.now(),
-                    metric=telemetry.get('metric', 'unknown'),
-                    value=telemetry.get('value', 0.0),
-                    severity_score=anomaly_score,
-                    context=telemetry
-                )
-                async with anomaly_lock:
-                    anomaly_history.append(anomaly)
-
-        except Exception as e:
-            logger.error(f"Failed to process telemetry: {e}")
-            continue
+                detected_anomalies.append(result['anomaly'])
+    
+    # Store all anomalies at once with lock (more efficient than multiple appends)
+    if detected_anomalies:
+        async with anomaly_lock:
+            anomaly_history.extend(detected_anomalies)
+    
     return {
         "processed": processed_count,
         "anomalies_detected": anomalies_detected
@@ -737,11 +729,12 @@ async def _process_telemetry(telemetry: TelemetryInput, request_start: float) ->
             "timestamp": datetime.now()
         }
 
-    # Detect anomaly (uses heuristic if model not loaded)
-    is_anomaly, anomaly_score = await detect_anomaly(data)
-
-    # Classify fault type
-    anomaly_type = classify(data)
+    # Run detect_anomaly() and classify() concurrently for better performance
+    # detect_anomaly is async, classify is sync (run in thread pool)
+    (is_anomaly, anomaly_score), anomaly_type = await asyncio.gather(
+        detect_anomaly(data),
+        asyncio.to_thread(classify, data)
+    )
 
     # Predictive Maintenance: Add training data and check for predictions
     predictive_actions = []
