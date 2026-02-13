@@ -64,7 +64,16 @@ class FeedbackCLI:
                 logger.error("Failed to remove corrupted pending feedback file", file_path=str(path), error=str(unlink_e))
             return []
         except Exception as e:
-            logger.error("Unexpected error loading pending feedback", file_path=str(path), error_type=type(e).__name__, error=str(e))
+            logger.error(
+                "Unexpected error loading pending feedback",
+                extra={
+                    "file_path": str(path),
+                    "error_type": type(e).__name__,
+                    "operation": "load_feedback",
+                    "error": str(e)
+                },
+                exc_info=True
+            )
             return []
 
     @staticmethod
@@ -349,13 +358,22 @@ def run_classifier() -> None:
     try:
         from classifier.fault_classifier import run_tests
         run_tests()
-    except ImportError:
+    except ImportError as e:
+        logger.error("Fault classifier not available", error=str(e))
         print("❌ Fault classifier not available. Missing dependencies.")
         sys.exit(1)
     except Exception as e:
+        logger.error(
+            f"Classifier failed: {e}",
+            extra={
+                "error_type": type(e).__name__,
+                "operation": "run_classifier",
+                "command": "classify"
+            },
+            exc_info=True
+        )
         print(f"❌ Classifier failed: {e}")
         sys.exit(1)
-
 
 def run_report(args: argparse.Namespace) -> None:
     """
@@ -499,6 +517,16 @@ def run_secrets_command(args: argparse.Namespace) -> None:
             sys.exit(1)
 
     except Exception as e:
+        logger.error(
+            f"Secrets operation failed: {e}",
+            extra={
+                "error_type": type(e).__name__,
+                "operation": "secrets_management",
+                "secrets_command": getattr(args, 'secrets_command', 'unknown'),
+                "key": getattr(args, 'key', None)
+            },
+            exc_info=True
+        )
         print(f"❌ Secrets operation failed: {e}")
         sys.exit(1)
 
